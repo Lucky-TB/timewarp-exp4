@@ -8,6 +8,10 @@ import {
   Dimensions,
   Platform,
   Switch,
+  SafeAreaView,
+  TextInput,
+  Modal,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,8 +31,6 @@ import Animated, {
   cancelAnimation,
   runOnJS,
 } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
-import { Link, router } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 
@@ -47,126 +49,27 @@ export default function FocusScreen() {
   const [timeRemaining, setTimeRemaining] = useState(FOCUS_MODES[0].duration * 60);
   const [distractions, setDistractions] = useState(0);
   const [isDndEnabled, setIsDndEnabled] = useState(false);
+  const [customTimeModalVisible, setCustomTimeModalVisible] = useState(false);
+  const [customMinutes, setCustomMinutes] = useState('30');
   
   const theme = useColorScheme();
   const colors = Colors[theme ?? 'light'];
   
-  // Animation values
-  const headerOpacity = useSharedValue(1);
+  // Animation values - simplified
   const focusRingScale = useSharedValue(1);
-  const pageOpacity = useSharedValue(0);
-  const statsScale = useSharedValue(0.95);
-  
-  // New animation values for the shader replacement
-  const backgroundAnimation = useSharedValue(0);
-  const progressValue = useSharedValue(0);
+  const pageOpacity = useSharedValue(1);
   
   // Timer ref for cleanup
   const timerRef = useRef(null);
   
   useEffect(() => {
-    // Start page fade-in animation
-    pageOpacity.value = withTiming(1, { duration: 800 });
-    
-    // Start background animation
-    backgroundAnimation.value = withRepeat(
-      withTiming(1, { duration: 10000 }),
-      -1, // infinite loop
-      true // reverse
-    );
-    
+    // Cleanup timer on unmount
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      cancelAnimation(backgroundAnimation);
     };
   }, []);
-  
-  // Updated to show progress with Reanimated
-  useEffect(() => {
-    if (isTimerRunning && !isPaused) {
-      // Set the progress value based on time remaining
-      const totalTime = selectedMode.duration * 60;
-      const progress = 1 - (timeRemaining / totalTime);
-      progressValue.value = withTiming(progress, { duration: 500 });
-      
-      // Update backgroundAnimation to pulse faster when timer is running
-      cancelAnimation(backgroundAnimation);
-      backgroundAnimation.value = withRepeat(
-        withTiming(1, { duration: isTimerRunning ? 5000 : 10000 }),
-        -1,
-        true
-      );
-    }
-  }, [isTimerRunning, isPaused, timeRemaining]);
-  
-  // Timer controls
-  const startTimer = () => {
-    if (!isTimerRunning) {
-      // Start the timer
-      setIsTimerRunning(true);
-      setIsPaused(false);
-      
-      // Pulse animation when timer starts
-      focusRingScale.value = withSequence(
-        withTiming(1.1, { duration: 300, easing: Easing.out(Easing.ease) }),
-        withTiming(1, { duration: 300, easing: Easing.inOut(Easing.ease) })
-      );
-      
-      // Haptic feedback
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      // Set up interval
-      timerRef.current = setInterval(() => {
-        setTimeRemaining((prevTime) => {
-          if (prevTime <= 1) {
-            completeTimer();
-            return 0;
-          }
-          return prevTime - 1;
-        });
-      }, 1000);
-    } else if (isPaused) {
-      // Resume the timer
-      setIsPaused(false);
-      
-      // Haptic feedback
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      
-      // Set up interval again
-      timerRef.current = setInterval(() => {
-        setTimeRemaining((prevTime) => {
-          if (prevTime <= 1) {
-            completeTimer();
-            return 0;
-          }
-          return prevTime - 1;
-        });
-      }, 1000);
-    }
-  };
-  
-  const pauseTimer = () => {
-    if (isTimerRunning && !isPaused) {
-      clearInterval(timerRef.current);
-      setIsPaused(true);
-      
-      // Haptic feedback
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-  };
-  
-  const resetTimer = () => {
-    clearInterval(timerRef.current);
-    setIsTimerRunning(false);
-    setIsPaused(false);
-    setTimeRemaining(selectedMode.duration * 60);
-    progressValue.value = withTiming(0, { duration: 500 });
-    
-    // Haptic feedback
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-  };
   
   // Format time to MM:SS
   const formatTime = (seconds) => {
@@ -177,107 +80,136 @@ export default function FocusScreen() {
   
   // Complete timer function
   const completeTimer = () => {
-    clearInterval(timerRef.current);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
     setIsTimerRunning(false);
     setIsPaused(false);
     
-    // Celebration animation
-    focusRingScale.value = withSequence(
-      withTiming(1.2, { duration: 300 }),
-      withTiming(1, { duration: 300 })
-    );
-    
     // Haptic success feedback
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  // Start or pause timer
+  const toggleTimer = () => {
+    // Add haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    // Would log the completed session to stats here
+    if (isTimerRunning) {
+      // Pause the timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      setIsPaused(true);
+      setIsTimerRunning(false);
+    } else {
+      // Start or resume the timer
+      setIsTimerRunning(true);
+      setIsPaused(false);
+      
+      timerRef.current = setInterval(() => {
+        setTimeRemaining((prev) => {
+          if (prev <= 1) {
+            // Timer complete
+            completeTimer();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  };
+  
+  // Reset the timer
+  const resetTimer = () => {
+    // Add haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    
+    setIsTimerRunning(false);
+    setIsPaused(false);
+    setTimeRemaining(selectedMode.duration * 60);
+  };
+  
+  // Track distraction
+  const trackDistraction = () => {
+    // Add haptic feedback
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    
+    setDistractions(prev => prev + 1);
+  };
+
+  // Get mode color - simplified and with better error handling
+  const getModeColor = (modeColor) => {
+    try {
+      if (!modeColor || !colors || !colors.gradient || !colors.gradient[modeColor]) {
+        return ['#7047EB', '#38BDF8']; // Fallback to hardcoded values
+      }
+      return colors.gradient[modeColor];
+    } catch (error) {
+      console.log('Error getting color:', error);
+      return ['#7047EB', '#38BDF8']; // Safe fallback
+    }
   };
   
   // Handle selecting a focus mode
   const selectMode = (mode) => {
-    if (mode.id !== selectedMode.id) {
+    if (mode && mode.id && mode.id !== selectedMode?.id) {
       setSelectedMode(mode);
       setTimeRemaining(mode.duration * 60);
-      progressValue.value = withTiming(0, { duration: 300 });
+      
+      // Show custom time modal if custom mode is selected
+      if (mode.id === 'custom') {
+        setCustomTimeModalVisible(true);
+      }
       
       // Haptic feedback
       Haptics.selectionAsync();
     }
   };
   
-  // Handle recording a distraction
-  const recordDistraction = () => {
-    if (isTimerRunning) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      setDistractions(prev => prev + 1);
-      
-      // Visual effect for distraction
-      focusRingScale.value = withSequence(
-        withTiming(0.95, { duration: 200 }),
-        withTiming(1, { duration: 300 })
-      );
+  // Handle custom time confirmation
+  const handleCustomTimeConfirm = () => {
+    const minutes = parseInt(customMinutes, 10);
+    
+    if (isNaN(minutes) || minutes <= 0 || minutes > 180) {
+      // Show error for invalid input
+      Alert.alert('Invalid Time', 'Please enter a valid time between 1 and 180 minutes.');
+      return;
     }
+    
+    // Update the custom mode duration
+    const updatedModes = [...FOCUS_MODES];
+    const customModeIndex = updatedModes.findIndex(mode => mode.id === 'custom');
+    if (customModeIndex !== -1) {
+      updatedModes[customModeIndex] = {
+        ...updatedModes[customModeIndex],
+        duration: minutes
+      };
+    }
+    
+    // Update time remaining
+    setTimeRemaining(minutes * 60);
+    
+    // Close modal
+    setCustomTimeModalVisible(false);
   };
-  
-  // Animated styles
-  const timerAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: focusRingScale.value }]
-  }));
-  
-  const pageAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: pageOpacity.value
-  }));
-  
-  // Get mode color
-  const getModeColor = (modeColor) => {
-    return colors.gradient[modeColor] || colors.gradient.primary;
-  };
-  
-  // Animated styles for the background effect
-  const animatedBackgroundStyle = useAnimatedStyle(() => {
-    return {
-      opacity: 0.8,
-      transform: [
-        { scale: interpolate(backgroundAnimation.value, [0, 1], [1, 1.1]) },
-      ],
-    };
-  });
-  
-  // Animated styles for the progress ring
-  const progressRingStyle = useAnimatedStyle(() => {
-    const rotation = interpolate(progressValue.value, [0, 1], [0, 360]);
-    return {
-      transform: [
-        { rotateZ: `${rotation}deg` },
-      ],
-      width: 220,
-      height: 220,
-      borderRadius: 110,
-      borderWidth: 10,
-      borderColor: 'transparent',
-      borderTopColor: selectedMode ? getModeColor(selectedMode.color)[0] : colors.primary,
-      position: 'absolute',
-    };
-  });
   
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
       
-      <Animated.View style={[styles.shaderContainer, { position: 'absolute', width, height }]}>
-        <Animated.View style={[styles.animatedBackground, animatedBackgroundStyle]}>
-          <LinearGradient
-            colors={isTimerRunning 
-              ? ['rgba(102, 76, 229, 0.8)', 'rgba(51, 126, 232, 0.8)']
-              : ['rgba(76, 76, 102, 0.6)', 'rgba(51, 51, 77, 0.6)']}
-            style={{ width: width * 1.2, height: height * 1.2, position: 'absolute' }}
-          />
-        </Animated.View>
-      </Animated.View>
+      <View style={styles.background}>
+        <LinearGradient
+          colors={['rgba(76, 76, 102, 0.6)', 'rgba(51, 51, 77, 0.6)']}
+          style={{ width: width, height: height, position: 'absolute' }}
+        />
+      </View>
       
-      <BlurView intensity={30} tint={theme === 'dark' ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
-      
-      <Animated.View style={[styles.content, pageAnimatedStyle]}>
+      <View style={styles.content}>
         <ScrollView 
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
@@ -312,11 +244,11 @@ export default function FocusScreen() {
                   style={[
                     styles.modeCard,
                     { 
-                      backgroundColor: selectedMode.id === mode.id 
-                        ? colors[mode.color] 
+                      backgroundColor: selectedMode?.id === mode.id 
+                        ? colors[mode.color] || colors.primary
                         : colors.card,
-                      borderColor: colors[mode.color],
-                      borderWidth: selectedMode.id === mode.id ? 0 : 1,
+                      borderColor: colors[mode.color] || colors.primary,
+                      borderWidth: selectedMode?.id === mode.id ? 0 : 1,
                     }
                   ]}
                   onPress={() => selectMode(mode)}
@@ -325,7 +257,7 @@ export default function FocusScreen() {
                     style={[
                       styles.modeName, 
                       { 
-                        color: selectedMode.id === mode.id 
+                        color: selectedMode?.id === mode.id 
                           ? 'white' 
                           : colors.text
                       }
@@ -337,7 +269,7 @@ export default function FocusScreen() {
                     style={[
                       styles.modeDuration, 
                       { 
-                        color: selectedMode.id === mode.id 
+                        color: selectedMode?.id === mode.id 
                           ? 'rgba(255, 255, 255, 0.8)' 
                           : colors.muted 
                       }
@@ -350,30 +282,27 @@ export default function FocusScreen() {
             </View>
           </View>
           
-          {/* Timer Circle */}
+          {/* Timer Display - Simplified */}
           <View style={styles.timerContainer}>
-            <Animated.View style={[styles.timerCircle, timerAnimatedStyle]}>
+            <View style={styles.timerCircle}>
               <View style={styles.timerInnerCircle}>
-                <Animated.View style={progressRingStyle} />
                 <LinearGradient
-                  colors={getModeColor(selectedMode.color)}
+                  colors={getModeColor(selectedMode?.color)}
                   style={styles.timerGradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  <Animated.View style={styles.timerContent}>
+                  <View style={styles.timerContent}>
                     <Text style={styles.timerText}>{formatTime(timeRemaining)}</Text>
                     <Text style={styles.timerLabel}>
-                      {isTimerRunning 
-                        ? (isPaused ? "Paused" : "Focus in progress") 
-                        : "Ready to focus"}
+                      {isTimerRunning ? "Focusing" : isPaused ? "Paused" : "Ready to focus"}
                     </Text>
-                  </Animated.View>
+                  </View>
                 </LinearGradient>
               </View>
-            </Animated.View>
+            </View>
             
-            {/* Timer Controls */}
+            {/* Timer Controls - Simplified */}
             <View style={styles.controlsContainer}>
               <TouchableOpacity 
                 style={styles.controlButton}
@@ -386,12 +315,11 @@ export default function FocusScreen() {
                 style={[
                   styles.controlButton, 
                   styles.controlButtonPrimary,
-                  { backgroundColor: isTimerRunning && !isPaused ? 'rgba(255,50,50,0.3)' : 'rgba(50,205,50,0.3)' }
                 ]}
-                onPress={isTimerRunning && !isPaused ? pauseTimer : startTimer}
+                onPress={toggleTimer}
               >
                 <Ionicons 
-                  name={isTimerRunning && !isPaused ? "pause" : "play"} 
+                  name={isTimerRunning ? "pause" : "play"} 
                   size={32} 
                   color="white" 
                 />
@@ -399,7 +327,7 @@ export default function FocusScreen() {
               
               <TouchableOpacity 
                 style={styles.controlButton}
-                onPress={recordDistraction}
+                onPress={trackDistraction}
               >
                 <Ionicons name="alert-circle-outline" size={24} color="white" />
               </TouchableOpacity>
@@ -413,15 +341,52 @@ export default function FocusScreen() {
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statValue}>
-                  {Math.floor((selectedMode.duration * 60 - timeRemaining) / 60)}
+                  {Math.floor((selectedMode?.duration * 60 - timeRemaining) / 60) || 0}
                 </Text>
                 <Text style={styles.statLabel}>Minutes Focused</Text>
               </View>
             </View>
           </View>
         </ScrollView>
-      </Animated.View>
-    </View>
+      </View>
+      
+      {/* Custom Time Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={customTimeModalVisible}
+        onRequestClose={() => setCustomTimeModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Set Custom Time</Text>
+            <TextInput
+              style={styles.timeInput}
+              keyboardType="number-pad"
+              placeholder="Minutes (1-180)"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              value={customMinutes}
+              onChangeText={setCustomMinutes}
+              maxLength={3}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setCustomTimeModalVisible(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleCustomTimeConfirm}
+              >
+                <Text style={styles.modalButtonText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
@@ -430,20 +395,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'black',
   },
-  shaderContainer: {
-    zIndex: 0,
-    overflow: 'hidden',
-  },
-  animatedBackground: {
+  background: {
     position: 'absolute',
-    width: width * 1.2,
-    height: height * 1.2,
-    left: -width * 0.1,
-    top: -height * 0.1,
+    width: width,
+    height: height,
+    zIndex: 0,
   },
   content: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: Platform.OS === 'ios' ? 20 : 40,
     paddingHorizontal: 20,
   },
   scrollContent: {
@@ -495,11 +455,6 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 15,
     marginBottom: 10,
-  },
-  modeCardActive: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
   },
   modeName: {
     fontSize: 16,
@@ -577,7 +532,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
   },
   controlButtonPrimary: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(50,205,50,0.3)',
   },
   statsContainer: {
     flexDirection: 'row',
@@ -598,5 +553,67 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: width * 0.8,
+    backgroundColor: '#1F1F2C',
+    borderRadius: 20,
+    padding: 25,
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 20,
+  },
+  timeInput: {
+    width: '100%',
+    height: 50,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    fontSize: 18,
+    color: 'white',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 10,
+    marginHorizontal: 5,
+  },
+  cancelButton: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  confirmButton: {
+    backgroundColor: '#7047EB',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 }); 
