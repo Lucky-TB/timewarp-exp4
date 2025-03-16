@@ -764,45 +764,57 @@ export default function CompanionScreen() {
           </ScrollView>
         </View>
         
-        {/* Input area */}
-        <LinearGradient
-          colors={getHeaderGradient()}
-          style={styles.inputGradient}
-        >
+        {/* Input Area */}
+        <View style={[
+          styles.inputWrapper,
+          {
+            backgroundColor: isDark ? 'rgba(40,40,40,0.9)' : 'rgba(250,250,250,0.9)',
+            borderColor: isDark ? 'rgba(80,80,80,0.8)' : 'rgba(220,220,220,0.8)'
+          }
+        ]}>
+          {/* Clean label */}
+          <Text style={[
+            styles.inputLabel,
+            { color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(100,100,100,0.8)' }
+          ]}>MESSAGE YOUR COMPANION</Text>
           <View style={styles.inputContainer}>
             <TextInput
               style={[
                 styles.input,
-                inputStyles
+                { 
+                  backgroundColor: isDark ? 'rgba(60,60,60,0.9)' : 'rgba(255,255,255,0.9)',
+                  color: colors.text,
+                  borderColor: isDark ? 'rgba(100,100,100,0.3)' : 'rgba(200,200,200,0.5)',
+                  maxHeight: 100,
+                  borderWidth: 1,
+                  fontSize: 16,
+                  padding: 12
+                }
               ]}
               placeholder="Type a message..."
-              placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+              placeholderTextColor={isDark ? 'rgba(200,200,200,0.6)' : 'rgba(120,120,120,0.6)'}
               value={inputText}
               onChangeText={setInputText}
               multiline
-              maxLength={500}
             />
+            
             <TouchableOpacity 
               style={[
                 styles.sendButton,
-                { 
-                  backgroundColor: inputText.trim() === '' ? 
-                    (isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)') : 
-                    getCompanionColor(),
-                  shadowColor: getCompanionColor(),
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.4,
-                  shadowRadius: 3,
-                  elevation: 2,
+                {
+                  backgroundColor: getCompanionColor(),
+                  opacity: inputText.trim() === '' ? 0.5 : 1,
+                  width: 44,
+                  height: 44
                 }
               ]}
               onPress={handleSendMessage}
-              disabled={inputText.trim() === '' || isLoading}
+              disabled={inputText.trim() === ''}
             >
-              <Ionicons name="send" size={18} color="#fff" />
+              <Ionicons name="send" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
-        </LinearGradient>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -1008,33 +1020,74 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  inputGradient: {
+  bottomSection: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+    borderTopWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 10,
+    zIndex: 9999,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 6,
+    letterSpacing: 0.5,
+  },
+  inputWrapper: {
+    marginTop: 8,
+    marginBottom: Platform.OS === 'ios' ? 5 : 5,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginHorizontal: 8,
   },
   inputContainer: {
     flexDirection: 'row',
-    padding: 12,
-    paddingHorizontal: 15,
-    alignItems: 'center',
+    alignItems: 'flex-end',
   },
   input: {
     flex: 1,
     minHeight: 45,
-    maxHeight: 120,
     borderRadius: 22,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    paddingRight: 50,
-    fontSize: 15,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
+    marginRight: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 3,
   },
   sendButton: {
-    position: 'absolute',
-    right: 22,
-    bottom: Platform.OS === 'ios' ? 17 : 17,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
   },
 });

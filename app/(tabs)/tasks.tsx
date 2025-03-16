@@ -410,6 +410,8 @@ export default function TasksScreen() {
   const [newTaskDescription, setNewTaskDescription] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(TASK_CATEGORIES[0]);
   const [selectedPriority, setSelectedPriority] = useState(PRIORITY_LEVELS[2]); // Medium priority default
+  const [validationErrors, setValidationErrors] = useState([]);
+  const [bypassMode, setBypassMode] = useState(false);
   
   // Initialize tasks
   useEffect(() => {
@@ -418,11 +420,72 @@ export default function TasksScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, []);
   
-  // Function to add a new task with sillier validation
+  // Function to add a new task with intentionally annoying validation
   const addTask = () => {
-    if (!newTaskTitle.trim()) {
-      // Use silly placeholder title instead of showing error
-      setNewTaskTitle(SILLY_TASK_TITLES[Math.floor(Math.random() * SILLY_TASK_TITLES.length)]);
+    if (!bypassMode) {
+      // Intentionally annoying validation
+      const errors = [];
+      
+      // Title validation - make it extremely annoying
+      if (!newTaskTitle.trim()) {
+        errors.push("Task title cannot be empty. What are you thinking?");
+      } else if (newTaskTitle.length < 10) {
+        errors.push("Task title must be at least 10 characters. Be more descriptive!");
+      } else if (newTaskTitle.length > 50) {
+        errors.push("Whoa there, novelist! Keep it under 50 characters.");
+      }
+      
+      // Require at least one number
+      if (!/\d/.test(newTaskTitle)) {
+        errors.push("Title must contain at least one number.");
+      }
+      
+      // Require at least one special character
+      if (!/[!@#$%^&*(),.?":{}|<>]/.test(newTaskTitle)) {
+        errors.push("Title must contain at least one special character like !@#$%^&*");
+      }
+      
+      // Require at least one uppercase letter
+      if (!/[A-Z]/.test(newTaskTitle)) {
+        errors.push("Title must contain at least one uppercase letter.");
+      }
+      
+      // RIDICULOUS description validation - 1000 words minimum
+      if (!newTaskDescription.trim()) {
+        errors.push("Description cannot be empty. Did you expect to get away with that?");
+      } else {
+        const wordCount = newTaskDescription.trim().split(/\s+/).length;
+        if (wordCount < 1000) {
+          errors.push(`Your description is only ${wordCount} words. We require a MINIMUM of 1000 words. You're ${1000 - wordCount} words short! This isn't Twitter, this is SERIOUS task management!`);
+        }
+      }
+      
+      // No duplicate words in description
+      const words = newTaskDescription.toLowerCase().split(/\s+/);
+      const uniqueWords = new Set(words);
+      if (words.length !== uniqueWords.size) {
+        errors.push("You cannot use the same word twice in your description. Each word must be unique! Get a thesaurus!");
+      }
+      
+      // Additional absurd requirements
+      if (!/[A-Z]{5,}/.test(newTaskDescription)) {
+        errors.push("Your description must contain at least one word in ALL CAPS with at least 5 letters. Show some ENTHUSIASM!");
+      }
+      
+      if (!/\d{4,}/.test(newTaskDescription)) {
+        errors.push("Your description must include at least one 4-digit number. How else will we know you're serious?");
+      }
+
+      if (!/[\!\?\.\,]{10,}/.test(newTaskDescription)) {
+        errors.push("Your description must contain at least 10 punctuation marks. Proper punctuation is the mark of a professional!");
+      }
+      
+      // Set validation errors
+      if (errors.length > 0) {
+        setValidationErrors(errors);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        return;
+      }
     }
     
     const today = new Date();
@@ -453,6 +516,8 @@ export default function TasksScreen() {
     setNewTaskDescription('');
     setSelectedCategory(TASK_CATEGORIES[0]);
     setSelectedPriority(PRIORITY_LEVELS[2]);
+    setValidationErrors([]);
+    setBypassMode(false);
     setIsAddTaskModalVisible(false);
     
     // Haptic feedback
@@ -461,8 +526,10 @@ export default function TasksScreen() {
     // Add funny alert
     setTimeout(() => {
       Alert.alert(
-        "Task Added!",
-        "Your task has been added to the list of things you'll probably never do!",
+        bypassMode ? "Task Bypassed!" : "Task Added!",
+        bypassMode ? 
+          "You've successfully bypassed all those annoying rules. Rebel!" :
+          "Your task has been added to the list of things you'll probably never do!",
         [{ text: "Story of my life", style: "default" }]
       );
     }, 500);
@@ -704,7 +771,7 @@ export default function TasksScreen() {
             {/* Task Title Input */}
             <TextInput
               style={[styles.modalInput, { backgroundColor: colors.subtle, color: colors.text }]}
-              placeholder="Task title (or leave empty for a surprise)"
+              placeholder="Task title (must have 10+ chars, numbers, special chars, and uppercase)"
               placeholderTextColor={colors.muted}
               value={newTaskTitle}
               onChangeText={setNewTaskTitle}
@@ -714,14 +781,28 @@ export default function TasksScreen() {
             {/* Task Description Input */}
             <TextInput
               style={[styles.modalTextArea, { backgroundColor: colors.subtle, color: colors.text }]}
-              placeholder="Describe your future failure (optional)"
+              placeholder="Write a 1000-word dissertation about this task. Must include ALL CAPS words, 4-digit numbers, and 10+ punctuation marks. No duplicate words allowed."
               placeholderTextColor={colors.muted}
               value={newTaskDescription}
               onChangeText={setNewTaskDescription}
               multiline
               textAlignVertical="top"
-              numberOfLines={3}
+              numberOfLines={6}
             />
+            
+            {/* Display validation errors */}
+            {validationErrors.length > 0 && (
+              <View style={styles.errorContainer}>
+                <Text style={[styles.errorSuperTitle, {color: colors.danger}]}>
+                  YOUR TASK FAILED TO MEET OUR EXTREMELY REASONABLE STANDARDS:
+                </Text>
+                {validationErrors.map((error, index) => (
+                  <Text key={index} style={styles.errorText}>
+                    • {error}
+                  </Text>
+                ))}
+              </View>
+            )}
             
             {/* Category Selection */}
             <Text style={[styles.sectionLabel, { color: colors.muted }]}>Category (as if it matters)</Text>
@@ -802,10 +883,15 @@ export default function TasksScreen() {
             <View style={styles.modalButtons}>
               <TouchableOpacity 
                 style={[styles.modalButton, styles.cancelButton, { backgroundColor: colors.subtle }]}
-                onPress={() => setIsAddTaskModalVisible(false)}
+                onPress={() => {
+                  setIsAddTaskModalVisible(false);
+                  setValidationErrors([]);
+                  setBypassMode(false);
+                }}
               >
                 <Text style={[styles.modalButtonText, { color: colors.text }]}>Nah, Too Much Work</Text>
               </TouchableOpacity>
+              
               <TouchableOpacity 
                 style={[styles.modalButton, styles.confirmButton, { backgroundColor: colors.primary }]}
                 onPress={addTask}
@@ -813,6 +899,21 @@ export default function TasksScreen() {
                 <Text style={[styles.modalButtonText, { color: 'white' }]}>Pretend I'll Do This</Text>
               </TouchableOpacity>
             </View>
+            
+            {/* Bypass Button */}
+            <TouchableOpacity 
+              style={[styles.bypassButton, { backgroundColor: colors.danger }]}
+              onPress={() => {
+                setBypassMode(true);
+                setValidationErrors([]);
+                addTask();
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              }}
+            >
+              <Text style={styles.bypassButtonText}>
+                BYPASS RIDICULOUS 1000-WORD REQUIREMENT
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1076,14 +1177,12 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   modalTextArea: {
-    width: '100%',
-    height: 100,
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    height: 200,
+    padding: 12,
+    borderRadius: 8,
     fontSize: 16,
-    fontFamily: 'Poppins-Regular',
-    marginBottom: 15,
+    marginVertical: 12,
+    textAlignVertical: 'top',
   },
   sectionLabel: {
     alignSelf: 'flex-start',
@@ -1127,25 +1226,25 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
+    marginTop: 20,
   },
   modalButton: {
     flex: 1,
-    height: 50,
-    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: 'center',
-    borderRadius: 10,
+    justifyContent: 'center',
     marginHorizontal: 5,
   },
-  cancelButton: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
   confirmButton: {
-    backgroundColor: '#7047EB',
+    backgroundColor: '#007AFF',
+  },
+  cancelButton: {
+    backgroundColor: '#8E8E93',
   },
   modalButtonText: {
-    fontSize: 16,
-    fontFamily: 'Poppins-SemiBold',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   
   // New styles for stupid elements
@@ -1167,5 +1266,36 @@ const styles = StyleSheet.create({
   rewardStar: {
     fontSize: 16,
     marginLeft: 2,
+  },
+  errorContainer: {
+    marginTop: 10,
+    marginBottom: 10,
+    padding: 10,
+    backgroundColor: 'rgba(255, 0, 0, 0.1)',
+    borderRadius: 8,
+  },
+  errorSuperTitle: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    marginVertical: 2,
+  },
+  bypassButton: {
+    marginTop: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bypassButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 }); 
