@@ -14,7 +14,9 @@ import {
   Animated,
   Pressable,
   ImageBackground,
-  Dimensions
+  Dimensions,
+  Alert,
+  Modal
 } from 'react-native';
 import { useColorScheme } from 'react-native';
 import Colors from '../../constants/Colors';
@@ -109,6 +111,13 @@ export default function CompanionScreen() {
   // Add state to track if free tier is exceeded
   const [apiQuotaExceeded, setApiQuotaExceeded] = useState(false);
   
+  // Add state for emoji rain feature
+  const [emojiRainEnabled, setEmojiRainEnabled] = useState(false);
+  const [showingEmojiRain, setShowingEmojiRain] = useState(false);
+  const [showEmojiOptions, setShowEmojiOptions] = useState(false);
+  const emojiAnimations = useRef<Animated.Value[]>([]);
+  const emojiPositions = useRef<{x: number, emoji: string, size: number}[]>([]);
+  
   // Load messages and gender preference from storage on mount
   useEffect(() => {
     loadMessages();
@@ -141,6 +150,52 @@ export default function CompanionScreen() {
       saveMessages();
     }
   }, [messages]);
+  
+  // Setup emoji rain animations
+  useEffect(() => {
+    // Reset animations when emoji rain begins
+    if (showingEmojiRain) {
+      // Create 100 emoji animations (increased from 20)
+      emojiAnimations.current = [];
+      emojiPositions.current = [];
+      
+      const screenWidth = Dimensions.get('window').width;
+      const screenHeight = Dimensions.get('window').height;
+      
+      // Expanded emoji collection with more varieties
+      const emojis = [
+        '🐱', '🐶', '😺', '🐕', '🐩', '🐈', '🐕‍🦺', '🐈‍⬛', '🐾',
+        '🐆', '🐅', '🦁', '🐯', '🦊', '🦝', '🐺', '🐻', '🐻‍❄️',
+        '🐨', '🐼', '🐹', '🐭', '🐰', '🦔', '🦇', '🦮', '🐕‍🦺',
+        '🐩', '🐕', '🦮', '🐾', '🙀', '😿', '😾', '😽', '😼',
+        '🐺', '🦝', '🦊', '🐕', '🐩', '🐈', '🐾', '🐆', '🐅'
+      ];
+      
+      // Create 100 animations
+      for (let i = 0; i < 100; i++) {
+        emojiAnimations.current.push(new Animated.Value(0));
+        emojiPositions.current.push({
+          x: Math.random() * screenWidth,
+          emoji: emojis[Math.floor(Math.random() * emojis.length)],
+          size: Math.random() * 20 + 25 // Random sizes between 25-45
+        });
+      }
+      
+      // Start the animations
+      const animations = emojiAnimations.current.map((anim, index) => {
+        return Animated.timing(anim, {
+          toValue: screenHeight,
+          duration: 2000 + Math.random() * 2000, // Random duration between 2-4 seconds
+          useNativeDriver: true
+        });
+      });
+      
+      Animated.stagger(20, animations).start(() => { // Reduced stagger time for faster appearance
+        // End emoji rain after all animations complete
+        setShowingEmojiRain(false);
+      });
+    }
+  }, [showingEmojiRain]);
   
   // Load messages from AsyncStorage
   const loadMessages = async () => {
@@ -352,7 +407,18 @@ export default function CompanionScreen() {
     }
   };
   
-  // Handle sending a message
+  // Handle long press on send button to show emoji rain option
+  const handleSendButtonLongPress = () => {
+    setShowEmojiOptions(true);
+  };
+  
+  // Toggle emoji rain feature
+  const toggleEmojiRain = (enabled: boolean) => {
+    setEmojiRainEnabled(enabled);
+    setShowEmojiOptions(false);
+  };
+  
+  // Handle sending a message with emoji rain
   const handleSendMessage = async () => {
     if (inputText.trim() === '') return;
     
@@ -366,6 +432,11 @@ export default function CompanionScreen() {
     
     setMessages(prevMessages => [...prevMessages, userMessage]);
     setInputText(''); // Clear input
+    
+    // Trigger emoji rain if enabled
+    if (emojiRainEnabled) {
+      setShowingEmojiRain(true);
+    }
     
     // Scroll to bottom
     setTimeout(() => {
@@ -764,35 +835,64 @@ export default function CompanionScreen() {
           </ScrollView>
         </View>
         
-        {/* Input Area */}
+        {/* Emoji Rain Layer */}
+        {showingEmojiRain && (
+          <View style={styles.emojiRainContainer}>
+            {emojiAnimations.current.map((anim, index) => (
+              <Animated.Text
+                key={index}
+                style={[
+                  styles.rainingEmoji,
+                  {
+                    transform: [{ translateY: anim }],
+                    left: emojiPositions.current[index].x,
+                    fontSize: emojiPositions.current[index].size
+                  }
+                ]}
+              >
+                {emojiPositions.current[index].emoji}
+              </Animated.Text>
+            ))}
+          </View>
+        )}
+        
+        {/* Input Area - Minimalist Design */}
         <View style={[
           styles.inputWrapper,
           {
-            backgroundColor: isDark ? 'rgba(40,40,40,0.9)' : 'rgba(250,250,250,0.9)',
-            borderColor: isDark ? 'rgba(80,80,80,0.8)' : 'rgba(220,220,220,0.8)'
+            backgroundColor: isDark ? 'rgba(40,40,40,0.8)' : 'rgba(250,250,250,0.8)',
+            borderColor: isDark ? 'rgba(60,60,60,0.5)' : 'rgba(230,230,230,0.8)',
+            borderWidth: 1,
+            marginBottom: 15
           }
         ]}>
-          {/* Clean label */}
-          <Text style={[
-            styles.inputLabel,
-            { color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(100,100,100,0.8)' }
-          ]}>MESSAGE YOUR COMPANION</Text>
+          {/* Emoji Rain Status - more subtle */}
+          {emojiRainEnabled && (
+            <Text style={[
+              styles.emojiRainStatus,
+              { color: isDark ? 'rgba(200,200,200,0.8)' : 'rgba(100,100,100,0.8)' }
+            ]}>
+              🐱 🐶 Emoji Rain Enabled
+            </Text>
+          )}
+          
           <View style={styles.inputContainer}>
             <TextInput
               style={[
                 styles.input,
                 { 
-                  backgroundColor: isDark ? 'rgba(60,60,60,0.9)' : 'rgba(255,255,255,0.9)',
+                  backgroundColor: isDark ? 'rgba(50,50,50,0.8)' : 'rgba(255,255,255,0.8)',
                   color: colors.text,
-                  borderColor: isDark ? 'rgba(100,100,100,0.3)' : 'rgba(200,200,200,0.5)',
+                  borderColor: isDark ? 'rgba(70,70,70,0.5)' : 'rgba(220,220,220,0.5)',
                   maxHeight: 100,
                   borderWidth: 1,
                   fontSize: 16,
-                  padding: 12
+                  padding: 12,
+                  minHeight: 45
                 }
               ]}
-              placeholder="Type a message..."
-              placeholderTextColor={isDark ? 'rgba(200,200,200,0.6)' : 'rgba(120,120,120,0.6)'}
+              placeholder="Message your companion..."
+              placeholderTextColor={isDark ? 'rgba(180,180,180,0.6)' : 'rgba(120,120,120,0.6)'}
               value={inputText}
               onChangeText={setInputText}
               multiline
@@ -803,19 +903,57 @@ export default function CompanionScreen() {
                 styles.sendButton,
                 {
                   backgroundColor: getCompanionColor(),
-                  opacity: inputText.trim() === '' ? 0.5 : 1,
-                  width: 44,
-                  height: 44
+                  opacity: inputText.trim() === '' ? 0.4 : 1,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20
                 }
               ]}
               onPress={handleSendMessage}
+              onLongPress={handleSendButtonLongPress}
+              delayLongPress={500}
               disabled={inputText.trim() === ''}
             >
-              <Ionicons name="send" size={20} color="#fff" />
+              <Ionicons name="send" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
+      
+      {/* Emoji Rain Options Modal */}
+      <Modal
+        visible={showEmojiOptions}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowEmojiOptions(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? '#222' : 'white' }]}>
+            <Text style={[styles.modalTitle, { color: getCompanionColor() }]}>Raining Cats and Dogs</Text>
+            <Text style={[styles.modalText, { color: isDark ? 'white' : 'black' }]}>Enable emoji rain when sending messages?</Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, { backgroundColor: getCompanionColor() }]}
+                onPress={() => toggleEmojiRain(true)}
+              >
+                <Text style={styles.modalButtonText}>Turn On 🐱🐶</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, { backgroundColor: '#333' }]}
+                onPress={() => toggleEmojiRain(false)}
+              >
+                <Text style={styles.modalButtonText}>Turn Off</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, { backgroundColor: '#666' }]}
+                onPress={() => setShowEmojiOptions(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1048,11 +1186,19 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: Platform.OS === 'ios' ? 5 : 5,
     paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 8,
-    borderRadius: 16,
+    paddingTop: 6,
+    paddingBottom: 6,
+    borderRadius: 20,
     borderWidth: 1,
     marginHorizontal: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -1061,24 +1207,24 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     minHeight: 45,
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 10,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    paddingBottom: 8,
     marginRight: 8,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 1,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
+    elevation: 1,
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: "#000",
@@ -1086,8 +1232,74 @@ const styles = StyleSheet.create({
       width: 0,
       height: 1,
     },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 1,
+    elevation: 2,
+  },
+  emojiRainContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'none',
+    zIndex: 9999,
+  },
+  rainingEmoji: {
+    position: 'absolute',
+    fontSize: 30, // Base size, will be overridden by individual settings
+    top: -50,
+    opacity: 0.9
+  },
+  emojiRainStatus: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    borderRadius: 20,
+    padding: 20,
+    width: '80%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  modalText: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalButtons: {
+    flexDirection: 'column',
+    width: '100%',
+  },
+  modalButton: {
+    padding: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginVertical: 5,
+  },
+  modalButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
