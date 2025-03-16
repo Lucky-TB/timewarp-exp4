@@ -156,7 +156,7 @@ export default function DashboardScreen() {
                 <Ionicons name="flame" size={20} color={colors.accent} />
               </View>
               <Text style={[styles.statValue, { color: colors.text }]}>5</Text>
-              <Text style={[styles.statLabel, { color: colors.muted }]}>Day Streak</Text>
+              <Text style={[styles.statLabel, { color: colors.muted }]}>Days Wasted</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -166,7 +166,7 @@ export default function DashboardScreen() {
                 <Ionicons name="checkmark-done" size={20} color={colors.success} />
               </View>
               <Text style={[styles.statValue, { color: colors.text }]}>12</Text>
-              <Text style={[styles.statLabel, { color: colors.muted }]}>Tasks Done</Text>
+              <Text style={[styles.statLabel, { color: colors.muted }]}>Tasks Failed</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -176,7 +176,7 @@ export default function DashboardScreen() {
                 <Ionicons name="timer-outline" size={20} color={colors.primary} />
               </View>
               <Text style={[styles.statValue, { color: colors.text }]}>8.2</Text>
-              <Text style={[styles.statLabel, { color: colors.muted }]}>Focus Hours</Text>
+              <Text style={[styles.statLabel, { color: colors.muted }]}>Wasted Hours</Text>
             </TouchableOpacity>
           </View>
 

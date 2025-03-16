@@ -26,6 +26,37 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
+// Define interfaces for our components
+interface SettingItemProps {
+  icon: string;
+  iconColor?: string;
+  label: string;
+  value?: boolean | string;
+  type: 'toggle' | 'action' | 'info';
+  onToggle?: (value: boolean) => void;
+  onPress?: () => void;
+  showChevron?: boolean;
+  hapticsEnabled?: boolean;
+}
+
+interface SettingSectionProps {
+  section: {
+    title: string;
+    icon: string;
+    items: Array<{
+      id: string;
+      title: string;
+      type: 'toggle' | 'action' | 'info';
+      icon: string;
+      value?: string;
+      onPress?: () => void;
+    }>
+  };
+  toggleSetting: (id: string) => void;
+  isEnabled: (id: string) => boolean;
+  hapticsEnabled: boolean;
+}
+
 // Simplified settings sections with only functional items
 const SETTINGS_SECTIONS = [
   {
@@ -33,7 +64,6 @@ const SETTINGS_SECTIONS = [
     icon: 'settings-outline',
     items: [
       { id: 'theme', title: 'Dark Mode', type: 'toggle', icon: 'moon-outline' },
-      { id: 'sounds', title: 'Sound Effects', type: 'toggle', icon: 'volume-high-outline' },
       { id: 'haptics', title: 'Haptic Feedback', type: 'toggle', icon: 'phone-portrait-outline' },
     ],
   },
@@ -46,22 +76,52 @@ const SETTINGS_SECTIONS = [
   },
 ];
 
-// Haptic feedback utility function
-const triggerHaptic = (isHapticsEnabled, style = Haptics.ImpactFeedbackStyle.Light) => {
-  if (isHapticsEnabled) {
-    Haptics.impactAsync(style);
+/**
+ * Trigger haptic feedback with the specified impact style
+ */
+const triggerHaptic = (
+  impact: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Medium,
+  isHapticsEnabled?: boolean
+) => {
+  // Only trigger if haptics are explicitly enabled (strictly true)
+  if (isHapticsEnabled === true) {
+    Haptics.impactAsync(impact);
   }
 };
 
-// Setting item component
-const SettingItem = ({ item, toggleSetting, isEnabled, colors }) => {
+// SettingItem component that renders a single setting item with appropriate interaction
+const SettingItem = ({
+  icon,
+  iconColor = Colors.primary,
+  label,
+  value,
+  type,
+  onToggle,
+  onPress,
+  showChevron = false,
+  hapticsEnabled = false,
+}: SettingItemProps) => {
+  const [isEnabled, setIsEnabled] = useState(value === true);
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  
+  // Update the isEnabled state when value prop changes
+  useEffect(() => {
+    setIsEnabled(value === true);
+  }, [value]);
+
+  // Handle press on the setting item
   const handlePress = () => {
-    if (item.type === 'toggle') {
-      toggleSetting(item.id);
-      triggerHaptic(isEnabled('haptics'));
-    } else {
-      // For non-toggle items, still trigger haptic if enabled
-      triggerHaptic(isEnabled('haptics'));
+    if (type === 'toggle') {
+      const newValue = !isEnabled;
+      setIsEnabled(newValue);
+      onToggle?.(newValue);
+      // Only trigger haptic feedback if haptics are enabled
+      triggerHaptic(Haptics.ImpactFeedbackStyle.Light, hapticsEnabled);
+    } else if (type === 'action' && onPress) {
+      onPress();
+      // Only trigger haptic feedback if haptics are enabled
+      triggerHaptic(Haptics.ImpactFeedbackStyle.Light, hapticsEnabled);
     }
   };
   
@@ -73,20 +133,23 @@ const SettingItem = ({ item, toggleSetting, isEnabled, colors }) => {
     >
       <View style={styles.settingItemLeft}>
         <View style={[styles.settingIconContainer, { backgroundColor: colors.subtle }]}>
-          <Ionicons name={item.icon} size={18} color={colors.primary} />
+          <Ionicons name={icon} size={18} color={iconColor} />
         </View>
         <View>
-          <Text style={[styles.settingTitle, { color: colors.text }]}>{item.title}</Text>
+          <Text style={[styles.settingTitle, { color: colors.text }]}>{label}</Text>
         </View>
       </View>
       
       <View style={styles.settingItemRight}>
-        {item.type === 'toggle' && (
+        {type === 'toggle' && (
           <Switch
-            value={isEnabled(item.id)}
+            value={isEnabled}
             onValueChange={() => {
-              toggleSetting(item.id);
-              triggerHaptic(isEnabled('haptics'));
+              const newValue = !isEnabled;
+              setIsEnabled(newValue);
+              onToggle?.(newValue);
+              // Only trigger haptic feedback if haptics are enabled
+              triggerHaptic(Haptics.ImpactFeedbackStyle.Light, hapticsEnabled);
             }}
             trackColor={{ false: colors.subtle, true: colors.primary }}
             thumbColor="white"
@@ -94,8 +157,8 @@ const SettingItem = ({ item, toggleSetting, isEnabled, colors }) => {
           />
         )}
         
-        {item.type === 'info' && (
-          <Text style={[styles.infoValue, { color: colors.muted }]}>{item.value}</Text>
+        {type === 'info' && (
+          <Text style={[styles.infoValue, { color: colors.muted }]}>{value}</Text>
         )}
       </View>
     </TouchableOpacity>
@@ -103,7 +166,10 @@ const SettingItem = ({ item, toggleSetting, isEnabled, colors }) => {
 };
 
 // Setting section component
-const SettingSection = ({ section, toggleSetting, isEnabled, colors }) => {
+const SettingSection = ({ section, toggleSetting, isEnabled, hapticsEnabled }: SettingSectionProps) => {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  
   return (
     <View style={styles.settingSection}>
       <View style={styles.sectionHeader}>
@@ -115,10 +181,14 @@ const SettingSection = ({ section, toggleSetting, isEnabled, colors }) => {
         {section.items.map((item) => (
           <SettingItem
             key={item.id}
-            item={item}
-            toggleSetting={toggleSetting}
-            isEnabled={isEnabled}
-            colors={colors}
+            icon={item.icon}
+            label={item.title}
+            value={item.type === 'info' ? item.value : isEnabled(item.id)}
+            type={item.type}
+            onToggle={(newValue) => toggleSetting(item.id)}
+            onPress={item.type === 'action' ? item.onPress : undefined}
+            showChevron={item.type === 'action'}
+            hapticsEnabled={hapticsEnabled}
           />
         ))}
       </View>
@@ -133,8 +203,7 @@ export default function ProfileScreen() {
   
   const [settings, setSettings] = useState({
     theme: colorScheme === 'dark',
-    sounds: true,
-    haptics: true,
+    haptics: false, // Default to false for safety
   });
   
   const pageOpacity = useSharedValue(0);
@@ -147,7 +216,12 @@ export default function ProfileScreen() {
         const savedSettings = await AsyncStorage.getItem('userSettings');
         if (savedSettings) {
           const parsedSettings = JSON.parse(savedSettings);
-          setSettings(parsedSettings);
+          setSettings({
+            ...parsedSettings,
+            // Ensure strict boolean values
+            theme: parsedSettings.theme === true,
+            haptics: parsedSettings.haptics === true
+          });
           
           // Apply theme setting
           if (parsedSettings.theme !== undefined) {
@@ -168,7 +242,7 @@ export default function ProfileScreen() {
     profileScale.value = withSpring(1, { damping: 12 });
     
     // Trigger welcome haptic if enabled
-    triggerHaptic(settings.haptics, Haptics.NotificationFeedbackType.Success);
+    triggerHaptic(Haptics.NotificationFeedbackType.Success, settings.haptics);
   }, []);
   
   // Animated styles
@@ -203,7 +277,7 @@ export default function ProfileScreen() {
   
   // Check if setting is enabled
   const isEnabled = (id) => {
-    return settings[id] || false;
+    return settings[id] === true; // Ensure strict boolean comparison
   };
   
   return (
@@ -227,7 +301,7 @@ export default function ProfileScreen() {
                 <TouchableOpacity 
                   style={styles.profileImageContainer}
                   onPress={() => {
-                    triggerHaptic(settings.haptics, Haptics.ImpactFeedbackStyle.Medium);
+                    triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy, settings.haptics);
                     // Could eventually handle profile image change functionality
                   }}
                 >
@@ -247,7 +321,7 @@ export default function ProfileScreen() {
               section={section}
               toggleSetting={toggleSetting}
               isEnabled={isEnabled}
-              colors={colors}
+              hapticsEnabled={settings.haptics}
             />
           ))}
           
@@ -255,7 +329,7 @@ export default function ProfileScreen() {
           <TouchableOpacity
             style={[styles.resetButton, { backgroundColor: colors.subtle }]}
             onPress={() => {
-              triggerHaptic(settings.haptics, Haptics.ImpactFeedbackStyle.Medium);
+              triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy, settings.haptics);
               Alert.alert(
                 'Reset Settings',
                 'Are you sure you want to reset all settings to default?',
@@ -263,17 +337,16 @@ export default function ProfileScreen() {
                   { 
                     text: 'Cancel', 
                     style: 'cancel',
-                    onPress: () => triggerHaptic(settings.haptics, Haptics.ImpactFeedbackStyle.Light)
+                    onPress: () => triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy, settings.haptics)
                   },
                   { 
                     text: 'Reset', 
                     style: 'destructive',
                     onPress: async () => {
-                      triggerHaptic(settings.haptics, Haptics.NotificationFeedbackType.Warning);
+                      triggerHaptic(Haptics.NotificationFeedbackType.Warning, settings.haptics);
                       const defaultSettings = {
                         theme: false,
-                        sounds: true,
-                        haptics: true,
+                        haptics: false, // Always default to disabled for safety
                       };
                       setSettings(defaultSettings);
                       setColorScheme('light');

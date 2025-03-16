@@ -1,75 +1,171 @@
 import { Tabs } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, StyleSheet, View, Animated } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { StyleSheet, View } from 'react-native';
-import Colors from '../../constants/Colors';
-import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Colors from '../../constants/Colors';
 
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof Ionicons>['name'];
-  color: string;
-  size?: number;
-  focused?: boolean;
-}) {
-  const { name, color, size = 24, focused = false } = props;
-  
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { scale: withSpring(focused ? 1.2 : 1, { damping: 10 }) },
-      ],
-      opacity: withSpring(focused ? 1 : 0.7, { damping: 10 }),
-    };
-  });
+// Global state to track haptic setting
+const useHapticSettings = () => {
+  const [isHapticsEnabled, setIsHapticsEnabled] = useState(false); // Default to false
 
   useEffect(() => {
-    if (focused) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-  }, [focused]);
+    const loadHapticSetting = async () => {
+      try {
+        const savedSettings = await AsyncStorage.getItem('userSettings');
+        if (savedSettings) {
+          const parsedSettings = JSON.parse(savedSettings);
+          // Explicitly check for boolean true
+          setIsHapticsEnabled(parsedSettings.haptics === true);
+        }
+      } catch (error) {
+        console.error('Error loading haptic setting:', error);
+        // Default to disabled on error
+        setIsHapticsEnabled(false);
+      }
+    };
 
+    loadHapticSetting();
+
+    // Set up a listener for changes to haptic settings
+    const subscribeToSettingsChanges = () => {
+      const interval = setInterval(async () => {
+        try {
+          const savedSettings = await AsyncStorage.getItem('userSettings');
+          if (savedSettings) {
+            const parsedSettings = JSON.parse(savedSettings);
+            setIsHapticsEnabled(parsedSettings.haptics === true);
+          }
+        } catch (error) {
+          console.error('Error checking for settings changes:', error);
+        }
+      }, 1000); // Check every second
+      
+      return () => clearInterval(interval);
+    };
+    
+    const unsubscribe = subscribeToSettingsChanges();
+    return unsubscribe;
+  }, []);
+
+  return isHapticsEnabled;
+};
+
+/**
+ * Trigger maximum-intensity haptic feedback
+ */
+const triggerMaxHaptic = (isEnabled: boolean) => {
+  // Only trigger haptics if explicitly enabled
+  if (isEnabled === true) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+  }
+};
+
+function TabBarIcon({ name, color, focused }: any) {
+  const isHapticsEnabled = useHapticSettings();
+  const opacityAnim = useRef(new Animated.Value(focused ? 1 : 0.7)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  
+  useEffect(() => {
+    if (focused) {
+      // Only trigger haptic when focused changes to true AND haptics are enabled
+      if (isHapticsEnabled === true) {
+        triggerMaxHaptic(isHapticsEnabled);
+      }
+      
+      Animated.parallel([
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.timing(scaleAnim, {
+            toValue: 1.2,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    } else {
+      Animated.timing(opacityAnim, {
+        toValue: 0.7,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [focused, isHapticsEnabled, opacityAnim, scaleAnim]);
+  
   return (
-    <Animated.View style={animatedStyle}>
-      <Ionicons name={name} size={size} color={color} />
+    <Animated.View style={{
+      transform: [{ scale: scaleAnim }],
+      opacity: opacityAnim
+    }}>
+      <Ionicons name={name} size={24} color={color} />
     </Animated.View>
   );
 }
 
-function MaterialTabBarIcon(props: {
-  name: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
-  color: string;
-  size?: number;
-  focused?: boolean;
-}) {
-  const { name, color, size = 24, focused = false } = props;
+function MaterialTabBarIcon({ name, color, focused }: any) {
+  const isHapticsEnabled = useHapticSettings();
+  const opacityAnim = useRef(new Animated.Value(focused ? 1 : 0.7)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
   
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { scale: withSpring(focused ? 1.2 : 1, { damping: 10 }) },
-      ],
-      opacity: withSpring(focused ? 1 : 0.7, { damping: 10 }),
-    };
-  });
-
   useEffect(() => {
     if (focused) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // Only trigger haptic when focused changes to true AND haptics are enabled
+      if (isHapticsEnabled === true) {
+        triggerMaxHaptic(isHapticsEnabled);
+      }
+      
+      Animated.parallel([
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.timing(scaleAnim, {
+            toValue: 1.2,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    } else {
+      Animated.timing(opacityAnim, {
+        toValue: 0.7,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
     }
-  }, [focused]);
-
+  }, [focused, isHapticsEnabled, opacityAnim, scaleAnim]);
+  
   return (
-    <Animated.View style={animatedStyle}>
-      <MaterialCommunityIcons name={name} size={size} color={color} />
+    <Animated.View style={{
+      transform: [{ scale: scaleAnim }],
+      opacity: opacityAnim
+    }}>
+      <MaterialCommunityIcons name={name} size={24} color={color} />
     </Animated.View>
   );
 }
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const isHapticsEnabled = useHapticSettings();
   
   return (
     <Tabs
