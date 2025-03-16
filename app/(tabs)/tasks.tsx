@@ -123,7 +123,7 @@ const generateRandomTasks = (count = 10) => {
   return tasks;
 };
 
-// Modified task item component to add silly elements
+// Modified task item component with more modern aesthetics
 const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
   // Animation values
   const offset = useSharedValue(0);
@@ -174,18 +174,26 @@ const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
   
   // Handle swipe gesture
   const gestureHandler = useAnimatedGestureHandler({
-    onStart: (_, ctx) => {
+    onStart: (_, ctx: { startX: number }) => {
       ctx.startX = offset.value;
     },
-    onActive: (event, ctx) => {
-      offset.value = ctx.startX + event.translationX;
+    onActive: (event, ctx: { startX: number }) => {
+      // Only allow left swipes (negative translation values)
+      // For right swipes, keep the offset at its starting value
+      if (event.translationX <= 0) {
+        offset.value = ctx.startX + event.translationX;
+      } else {
+        offset.value = ctx.startX;
+      }
     },
     onEnd: (event) => {
+      // Only trigger delete if swiped left past threshold
       if (event.translationX < -width * 0.3) {
         offset.value = withTiming(-width, { duration: 300 }, () => {
           runOnJS(deleteTask)();
         });
       } else {
+        // Reset position
         offset.value = withTiming(0, { duration: 300 });
       }
     },
@@ -245,10 +253,6 @@ const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
     }
   };
   
-  // Random rotation for tasks to make them look stupid
-  const randomRotation = useRef(Math.random() * 6 - 3).current;
-  const randomScale = useRef(0.95 + Math.random() * 0.1).current;
-  
   // Is deadline close?
   const isDeadlineClose = task.hoursToDeadline < 24 && !task.completed;
   
@@ -257,7 +261,7 @@ const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
       {/* Delete background */}
       <View style={[styles.deleteBackground, { backgroundColor: colors.danger }]}>
         <Ionicons name="trash" size={24} color="white" />
-        <Text style={styles.deleteText}>Delete Forever!</Text>
+        <Text style={styles.deleteText}>Delete</Text>
       </View>
       
       <PanGestureHandler onGestureEvent={gestureHandler}>
@@ -265,13 +269,7 @@ const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
           style={[
             styles.taskItem,
             animatedStyle,
-            { 
-              backgroundColor: colors.card,
-              transform: [
-                { rotate: `${randomRotation}deg` },
-                { scale: randomScale }
-              ]
-            }
+            { backgroundColor: colors.card }
           ]}
         >
           <TouchableOpacity
@@ -304,7 +302,7 @@ const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
             </View>
             
             <View style={styles.taskMeta}>
-              <View style={styles.categoryBadge}>
+              <View style={[styles.categoryBadge, { backgroundColor: `${colors[task.category.color]}20` }]}>
                 <Ionicons
                   name={task.category.icon}
                   size={12}
@@ -320,18 +318,7 @@ const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
                 </Text>
               </View>
               
-              <View style={styles.personalityContainer}>
-                <Ionicons
-                  name={getPersonalityIcon(task.personality)}
-                  size={12}
-                  color={colors.muted}
-                />
-                <Text style={[styles.personalityText, { color: colors.muted }]}>
-                  {task.personality}
-                </Text>
-              </View>
-              
-              <View style={styles.deadlineContainer}>
+              <View style={[styles.deadlineContainer, { backgroundColor: isDeadlineClose ? `${colors.danger}20` : `${colors.muted}20` }]}>
                 <Ionicons
                   name="time"
                   size={12}
@@ -358,16 +345,14 @@ const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
                   {task.description}
                 </Text>
                 
-                {/* Add random statistics */}
-                <View style={styles.stupidStats}>
-                  <Text style={[styles.stupidStatText, { color: colors.muted }]}>
-                    Brain cells required: {Math.floor(Math.random() * 100)}
-                  </Text>
-                  <Text style={[styles.stupidStatText, { color: colors.muted }]}>
-                    Procrastination potential: {Math.floor(Math.random() * 100)}%
-                  </Text>
-                  <Text style={[styles.stupidStatText, { color: colors.muted }]}>
-                    Chance of success: {Math.floor(Math.random() * 100)}%
+                <View style={[styles.personalityContainer, { backgroundColor: `${colors.muted}20` }]}>
+                  <Ionicons
+                    name={getPersonalityIcon(task.personality)}
+                    size={12}
+                    color={colors.muted}
+                  />
+                  <Text style={[styles.personalityText, { color: colors.muted }]}>
+                    {task.personality}
                   </Text>
                 </View>
               </Animated.View>
@@ -381,12 +366,9 @@ const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
               </View>
             )}
             
-            {/* Add random reward stars */}
             {task.completed && (
               <View style={styles.rewardContainer}>
-                {[...Array(Math.floor(Math.random() * 3) + 1)].map((_, i) => (
-                  <Text key={i} style={styles.rewardStar}>⭐</Text>
-                ))}
+                <Text style={styles.rewardStar}>⭐</Text>
               </View>
             )}
           </View>
@@ -420,64 +402,18 @@ export default function TasksScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, []);
   
-  // Function to add a new task with intentionally annoying validation
+  // Function to add a new task
   const addTask = () => {
     if (!bypassMode) {
-      // Intentionally annoying validation
+      // Validation
       const errors = [];
       
-      // Title validation - make it extremely annoying
       if (!newTaskTitle.trim()) {
-        errors.push("Task title cannot be empty. What are you thinking?");
-      } else if (newTaskTitle.length < 10) {
-        errors.push("Task title must be at least 10 characters. Be more descriptive!");
-      } else if (newTaskTitle.length > 50) {
-        errors.push("Whoa there, novelist! Keep it under 50 characters.");
+        errors.push("Task title cannot be empty.");
       }
       
-      // Require at least one number
-      if (!/\d/.test(newTaskTitle)) {
-        errors.push("Title must contain at least one number.");
-      }
-      
-      // Require at least one special character
-      if (!/[!@#$%^&*(),.?":{}|<>]/.test(newTaskTitle)) {
-        errors.push("Title must contain at least one special character like !@#$%^&*");
-      }
-      
-      // Require at least one uppercase letter
-      if (!/[A-Z]/.test(newTaskTitle)) {
-        errors.push("Title must contain at least one uppercase letter.");
-      }
-      
-      // RIDICULOUS description validation - 1000 words minimum
       if (!newTaskDescription.trim()) {
-        errors.push("Description cannot be empty. Did you expect to get away with that?");
-      } else {
-        const wordCount = newTaskDescription.trim().split(/\s+/).length;
-        if (wordCount < 1000) {
-          errors.push(`Your description is only ${wordCount} words. We require a MINIMUM of 1000 words. You're ${1000 - wordCount} words short! This isn't Twitter, this is SERIOUS task management!`);
-        }
-      }
-      
-      // No duplicate words in description
-      const words = newTaskDescription.toLowerCase().split(/\s+/);
-      const uniqueWords = new Set(words);
-      if (words.length !== uniqueWords.size) {
-        errors.push("You cannot use the same word twice in your description. Each word must be unique! Get a thesaurus!");
-      }
-      
-      // Additional absurd requirements
-      if (!/[A-Z]{5,}/.test(newTaskDescription)) {
-        errors.push("Your description must contain at least one word in ALL CAPS with at least 5 letters. Show some ENTHUSIASM!");
-      }
-      
-      if (!/\d{4,}/.test(newTaskDescription)) {
-        errors.push("Your description must include at least one 4-digit number. How else will we know you're serious?");
-      }
-
-      if (!/[\!\?\.\,]{10,}/.test(newTaskDescription)) {
-        errors.push("Your description must contain at least 10 punctuation marks. Proper punctuation is the mark of a professional!");
+        errors.push("Please provide a task description.");
       }
       
       // Set validation errors
@@ -497,7 +433,7 @@ export default function TasksScreen() {
     const newTask = {
       id: `task-${tasks.length + 1}-${Date.now()}`,
       title: newTaskTitle || SILLY_TASK_TITLES[Math.floor(Math.random() * SILLY_TASK_TITLES.length)],
-      description: newTaskDescription || `This is definitely the most important task you've ever had. No pressure.`,
+      description: newTaskDescription || `This is a description for your task.`,
       category: selectedCategory,
       priority: selectedPriority,
       deadline: randomDate,
@@ -511,7 +447,7 @@ export default function TasksScreen() {
     
     setTasks(prevTasks => [newTask, ...prevTasks]);
     
-    // Reset form and close modal with silly feedback
+    // Reset form and close modal
     setNewTaskTitle('');
     setNewTaskDescription('');
     setSelectedCategory(TASK_CATEGORIES[0]);
@@ -523,14 +459,12 @@ export default function TasksScreen() {
     // Haptic feedback
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
-    // Add funny alert
+    // Success alert
     setTimeout(() => {
       Alert.alert(
-        bypassMode ? "Task Bypassed!" : "Task Added!",
-        bypassMode ? 
-          "You've successfully bypassed all those annoying rules. Rebel!" :
-          "Your task has been added to the list of things you'll probably never do!",
-        [{ text: "Story of my life", style: "default" }]
+        "Task Added!",
+        "Your task has been added successfully!",
+        [{ text: "Great", style: "default" }]
       );
     }, 500);
   };
@@ -593,185 +527,183 @@ export default function TasksScreen() {
   }));
   
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       
-      <Animated.View style={[styles.content, animatedStyle]}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Tasks That You Might Do</Text>
-          <TouchableOpacity
-            style={[styles.addButton, { backgroundColor: colors.primary }]}
-            onPress={() => {
-              setIsAddTaskModalVisible(true);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            }}
-          >
-            <Ionicons name="add" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
-        
-        {/* Search bar */}
-        <View style={[styles.searchContainer, { backgroundColor: colors.subtle }]}>
-          <Ionicons name="search" size={18} color={colors.muted} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search tasks..."
-            placeholderTextColor={colors.muted}
-            value={searchText}
-            onChangeText={setSearchText}
-          />
-          {searchText.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchText('')}>
-              <Ionicons name="close-circle" size={18} color={colors.muted} />
-            </TouchableOpacity>
-          )}
-        </View>
-        
-        {/* Filter tabs */}
-        <View style={styles.filterContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <TouchableOpacity
-              style={[
-                styles.filterTab,
-                filter === 'all' && {
-                  backgroundColor: colors.primary,
-                }
-              ]}
-              onPress={() => setFilter('all')}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  {
-                    color: filter === 'all' ? 'white' : colors.muted
-                  }
-                ]}
-              >
-                All
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[
-                styles.filterTab,
-                filter === 'active' && {
-                  backgroundColor: colors.info,
-                }
-              ]}
-              onPress={() => setFilter('active')}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  {
-                    color: filter === 'active' ? 'white' : colors.muted
-                  }
-                ]}
-              >
-                Active
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[
-                styles.filterTab,
-                filter === 'completed' && {
-                  backgroundColor: colors.success,
-                }
-              ]}
-              onPress={() => setFilter('completed')}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  {
-                    color: filter === 'completed' ? 'white' : colors.muted
-                  }
-                ]}
-              >
-                Completed
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[
-                styles.filterTab,
-                filter === 'urgent' && {
-                  backgroundColor: colors.danger,
-                }
-              ]}
-              onPress={() => setFilter('urgent')}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  {
-                    color: filter === 'urgent' ? 'white' : colors.muted
-                  }
-                ]}
-              >
-                Urgent
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-        
-        {/* Task list */}
-        <FlatList
-          data={getFilteredTasks()}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TaskItem
-              task={item}
-              onToggle={toggleTaskCompletion}
-              onDelete={deleteTask}
-              onExpand={toggleTaskExpansion}
-              colors={colors}
-            />
-          )}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.taskList}
-          ListEmptyComponent={() => (
-            <View style={styles.emptyContainer}>
-              <Ionicons
-                name="cafe"
-                size={60}
-                color={colors.muted}
-                style={styles.emptyIcon}
+      <ScrollView 
+        style={styles.scrollContainer} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+      >
+        <Animated.View style={[styles.content, animatedStyle]}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Tasks</Text>
+          </View>
+          
+          {/* Search and Add button row */}
+          <View style={styles.searchRow}>
+            <View style={[styles.searchContainer, { backgroundColor: colors.subtle }]}>
+              <Ionicons name="search" size={18} color={colors.muted} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.text }]}
+                placeholder="Search tasks..."
+                placeholderTextColor={colors.muted}
+                value={searchText}
+                onChangeText={setSearchText}
               />
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                Nothing To Do!
-              </Text>
-              <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-                {searchText
-                  ? "Try a different search term"
-                  : filter === 'completed'
-                  ? "Wow, you actually finished something?"
-                  : filter === 'urgent'
-                  ? "Nothing urgent. Go back to sleep!"
-                  : "Add a task or continue procrastinating"}
-              </Text>
+              {searchText.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchText('')}>
+                  <Ionicons name="close-circle" size={18} color={colors.muted} />
+                </TouchableOpacity>
+              )}
             </View>
-          )}
-        />
-      </Animated.View>
+            
+            <TouchableOpacity
+              style={[styles.addButton, { backgroundColor: colors.primary }]}
+              onPress={() => {
+                setIsAddTaskModalVisible(true);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              }}
+            >
+              <Ionicons name="add" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Filter tabs */}
+          <View style={styles.filterContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <TouchableOpacity
+                style={[
+                  styles.filterTab,
+                  filter === 'all' && { backgroundColor: colors.primary }
+                ]}
+                onPress={() => setFilter('all')}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    { color: filter === 'all' ? 'white' : colors.muted }
+                  ]}
+                >
+                  All
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.filterTab,
+                  filter === 'active' && { backgroundColor: colors.info }
+                ]}
+                onPress={() => setFilter('active')}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    { color: filter === 'active' ? 'white' : colors.muted }
+                  ]}
+                >
+                  Active
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.filterTab,
+                  filter === 'completed' && { backgroundColor: colors.success }
+                ]}
+                onPress={() => setFilter('completed')}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    { color: filter === 'completed' ? 'white' : colors.muted }
+                  ]}
+                >
+                  Completed
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.filterTab,
+                  filter === 'urgent' && { backgroundColor: colors.danger }
+                ]}
+                onPress={() => setFilter('urgent')}
+              >
+                <Text
+                  style={[
+                    styles.filterText,
+                    { color: filter === 'urgent' ? 'white' : colors.muted }
+                  ]}
+                >
+                  Urgent
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+          
+          {/* Task list */}
+          <View style={styles.taskListContainer}>
+            {getFilteredTasks().length > 0 ? (
+              getFilteredTasks().map((task) => (
+                <TaskItem
+                  key={task.id}
+                  task={task}
+                  onToggle={toggleTaskCompletion}
+                  onDelete={deleteTask}
+                  onExpand={toggleTaskExpansion}
+                  colors={colors}
+                />
+              ))
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons
+                  name="cafe"
+                  size={60}
+                  color={colors.muted}
+                  style={styles.emptyIcon}
+                />
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                  No Tasks Found
+                </Text>
+                <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
+                  {searchText
+                    ? "Try a different search term"
+                    : filter === 'completed'
+                    ? "You haven't completed any tasks yet"
+                    : filter === 'urgent'
+                    ? "No urgent tasks at the moment"
+                    : "Add a task to get started"}
+                </Text>
+              </View>
+            )}
+          </View>
+        </Animated.View>
+      </ScrollView>
       
       {/* Add Task Modal */}
       <Modal
-        animationType="fade"
+        animationType="slide"
         transparent={true}
         visible={isAddTaskModalVisible}
         onRequestClose={() => setIsAddTaskModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <BlurView intensity={90} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Add New Task You'll Never Do</Text>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>New Task</Text>
+              <TouchableOpacity onPress={() => setIsAddTaskModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
             
             {/* Task Title Input */}
+            <Text style={[styles.inputLabel, { color: colors.muted }]}>Task Title</Text>
             <TextInput
               style={[styles.modalInput, { backgroundColor: colors.subtle, color: colors.text }]}
-              placeholder="Task title (must have 10+ chars, numbers, special chars, and uppercase)"
+              placeholder="Enter a title for your task"
               placeholderTextColor={colors.muted}
               value={newTaskTitle}
               onChangeText={setNewTaskTitle}
@@ -779,9 +711,10 @@ export default function TasksScreen() {
             />
             
             {/* Task Description Input */}
+            <Text style={[styles.inputLabel, { color: colors.muted }]}>Description</Text>
             <TextInput
               style={[styles.modalTextArea, { backgroundColor: colors.subtle, color: colors.text }]}
-              placeholder="Write a 1000-word dissertation about this task. Must include ALL CAPS words, 4-digit numbers, and 10+ punctuation marks. No duplicate words allowed."
+              placeholder="Describe your task"
               placeholderTextColor={colors.muted}
               value={newTaskDescription}
               onChangeText={setNewTaskDescription}
@@ -793,9 +726,6 @@ export default function TasksScreen() {
             {/* Display validation errors */}
             {validationErrors.length > 0 && (
               <View style={styles.errorContainer}>
-                <Text style={[styles.errorSuperTitle, {color: colors.danger}]}>
-                  YOUR TASK FAILED TO MEET OUR EXTREMELY REASONABLE STANDARDS:
-                </Text>
                 {validationErrors.map((error, index) => (
                   <Text key={index} style={styles.errorText}>
                     • {error}
@@ -805,7 +735,7 @@ export default function TasksScreen() {
             )}
             
             {/* Category Selection */}
-            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Category (as if it matters)</Text>
+            <Text style={[styles.inputLabel, { color: colors.muted }]}>Category</Text>
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
@@ -819,8 +749,7 @@ export default function TasksScreen() {
                     { 
                       backgroundColor: selectedCategory.id === category.id 
                         ? colors[category.color] 
-                        : colors.subtle,
-                      transform: [{ rotate: `${Math.random() * 2 - 1}deg` }]
+                        : colors.subtle
                     }
                   ]}
                   onPress={() => setSelectedCategory(category)}
@@ -847,7 +776,7 @@ export default function TasksScreen() {
             </ScrollView>
             
             {/* Priority Selection */}
-            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Priority (everything is "urgent")</Text>
+            <Text style={[styles.inputLabel, { color: colors.muted }]}>Priority</Text>
             <View style={styles.priorityContainer}>
               {PRIORITY_LEVELS.map((priority) => (
                 <TouchableOpacity
@@ -857,8 +786,7 @@ export default function TasksScreen() {
                     { 
                       backgroundColor: selectedPriority.id === priority.id 
                         ? colors[priority.color] 
-                        : colors.subtle,
-                      transform: [{ rotate: `${Math.random() * 2 - 1}deg` }]
+                        : colors.subtle
                     }
                   ]}
                   onPress={() => setSelectedPriority(priority)}
@@ -879,43 +807,15 @@ export default function TasksScreen() {
               ))}
             </View>
             
-            {/* Buttons */}
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton, { backgroundColor: colors.subtle }]}
-                onPress={() => {
-                  setIsAddTaskModalVisible(false);
-                  setValidationErrors([]);
-                  setBypassMode(false);
-                }}
-              >
-                <Text style={[styles.modalButtonText, { color: colors.text }]}>Nah, Too Much Work</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.confirmButton, { backgroundColor: colors.primary }]}
-                onPress={addTask}
-              >
-                <Text style={[styles.modalButtonText, { color: 'white' }]}>Pretend I'll Do This</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {/* Bypass Button */}
+            {/* Add Button */}
             <TouchableOpacity 
-              style={[styles.bypassButton, { backgroundColor: colors.danger }]}
-              onPress={() => {
-                setBypassMode(true);
-                setValidationErrors([]);
-                addTask();
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-              }}
+              style={[styles.addTaskButton, { backgroundColor: colors.primary }]}
+              onPress={addTask}
             >
-              <Text style={styles.bypassButtonText}>
-                BYPASS RIDICULOUS 1000-WORD REQUIREMENT
-              </Text>
+              <Text style={styles.addTaskButtonText}>Add Task</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </BlurView>
       </Modal>
     </View>
   );
@@ -924,7 +824,12 @@ export default function TasksScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   content: {
     flex: 1,
@@ -938,24 +843,23 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 34,
     fontFamily: 'Poppins-Bold',
   },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchContainer: {
+  searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 15,
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 15,
     height: 50,
     borderRadius: 25,
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
@@ -964,27 +868,34 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Regular',
     fontSize: 14,
   },
+  addButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   filterContainer: {
     paddingHorizontal: 20,
-    marginBottom: 15,
+    marginBottom: 20,
   },
   filterTab: {
     paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
     marginRight: 10,
   },
   filterText: {
     fontFamily: 'Poppins-Medium',
     fontSize: 14,
   },
-  taskList: {
+  taskListContainer: {
     paddingHorizontal: 20,
     paddingBottom: 100,
   },
   taskItemContainer: {
     position: 'relative',
-    marginBottom: 10,
+    marginBottom: 15,
   },
   deleteBackground: {
     position: 'absolute',
@@ -1011,12 +922,11 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 2,
     },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-    overflow: 'hidden',
+    shadowRadius: 3,
+    elevation: 3,
   },
   checkbox: {
     marginRight: 12,
@@ -1037,7 +947,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 5,
+    marginBottom: 8,
   },
   taskTitle: {
     fontSize: 16,
@@ -1048,35 +958,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
+    marginBottom: 5,
   },
   categoryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
   },
   categoryText: {
     fontSize: 12,
     fontFamily: 'Poppins-Medium',
-    marginLeft: 3,
-  },
-  personalityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  personalityText: {
-    fontSize: 12,
-    fontFamily: 'Poppins-Regular',
-    marginLeft: 3,
+    marginLeft: 4,
   },
   deadlineContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   deadlineText: {
     fontSize: 12,
     fontFamily: 'Poppins-Regular',
-    marginLeft: 3,
+    marginLeft: 4,
+  },
+  personalityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  personalityText: {
+    fontSize: 12,
+    fontFamily: 'Poppins-Regular',
+    marginLeft: 4,
   },
   taskDescription: {
     marginTop: 10,
@@ -1085,24 +1005,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Poppins-Regular',
     lineHeight: 20,
-  },
-  relationshipsContainer: {
-    marginTop: 8,
-  },
-  relationshipsLabel: {
-    fontSize: 12,
-    fontFamily: 'Poppins-Medium',
-    marginBottom: 3,
-  },
-  relationshipItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  relationshipText: {
-    fontSize: 12,
-    fontFamily: 'Poppins-Regular',
-    marginLeft: 5,
+    marginBottom: 8,
   },
   taskActions: {
     marginLeft: 'auto',
@@ -1139,61 +1042,67 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Poppins-Regular',
     textAlign: 'center',
+    maxWidth: '80%',
   },
   
   // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
   },
   modalContent: {
-    width: width * 0.85,
-    borderRadius: 20,
+    width: '100%',
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
     padding: 20,
-    alignItems: 'center',
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
     elevation: 5,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: 2
+      height: -2
     },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   modalTitle: {
     fontSize: 20,
     fontFamily: 'Poppins-Bold',
-    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Medium',
+    marginBottom: 8,
+    alignSelf: 'flex-start',
   },
   modalInput: {
     width: '100%',
     height: 50,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 15,
     fontSize: 16,
     fontFamily: 'Poppins-Regular',
     marginBottom: 15,
   },
   modalTextArea: {
-    height: 200,
+    width: '100%',
+    height: 120,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     fontSize: 16,
-    marginVertical: 12,
+    marginBottom: 15,
     textAlignVertical: 'top',
-  },
-  sectionLabel: {
-    alignSelf: 'flex-start',
-    fontSize: 14,
-    fontFamily: 'Poppins-Medium',
-    marginBottom: 10,
+    fontFamily: 'Poppins-Regular',
   },
   categoriesContainer: {
-    flexDirection: 'row',
     marginBottom: 15,
-    alignSelf: 'flex-start',
   },
   categoryPill: {
     flexDirection: 'row',
@@ -1211,53 +1120,44 @@ const styles = StyleSheet.create({
   priorityContainer: {
     flexDirection: 'row',
     marginBottom: 25,
-    alignSelf: 'flex-start',
+    justifyContent: 'space-between',
   },
   priorityPill: {
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 20,
-    marginRight: 10,
+    flex: 1,
+    marginHorizontal: 5,
+    alignItems: 'center',
   },
   priorityPillText: {
     fontFamily: 'Poppins-Medium',
     fontSize: 14,
   },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
+  addTaskButton: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 5,
   },
-  confirmButton: {
-    backgroundColor: '#007AFF',
+  addTaskButtonText: {
+    color: 'white',
+    fontFamily: 'Poppins-Bold',
+    fontSize: 16,
   },
-  cancelButton: {
-    backgroundColor: '#8E8E93',
+  errorContainer: {
+    marginTop: 5,
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: 'rgba(255, 0, 0, 0.1)',
+    borderRadius: 8,
   },
-  modalButtonText: {
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  
-  // New styles for stupid elements
-  stupidStats: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
-  },
-  stupidStatText: {
+  errorText: {
+    color: '#FF3B30',
     fontSize: 12,
-    fontFamily: 'Poppins-Italic',
-    marginBottom: 3,
+    marginVertical: 2,
+    fontFamily: 'Poppins-Regular',
   },
   rewardContainer: {
     flexDirection: 'row',
@@ -1266,36 +1166,5 @@ const styles = StyleSheet.create({
   rewardStar: {
     fontSize: 16,
     marginLeft: 2,
-  },
-  errorContainer: {
-    marginTop: 10,
-    marginBottom: 10,
-    padding: 10,
-    backgroundColor: 'rgba(255, 0, 0, 0.1)',
-    borderRadius: 8,
-  },
-  errorSuperTitle: {
-    fontWeight: 'bold',
-    fontSize: 14,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 12,
-    marginVertical: 2,
-  },
-  bypassButton: {
-    marginTop: 15,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bypassButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
   },
 }); 
