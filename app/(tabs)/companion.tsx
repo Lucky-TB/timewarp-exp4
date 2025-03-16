@@ -98,8 +98,8 @@ export default function CompanionScreen() {
     { 
       id: '1', 
       text: isFemale ? 
-        'Hey there! I\'m your personal companion. How\'s your day going?' : 
-        'Sup! I\'m your personal companion. What\'s on your mind today?', 
+        'Hey there! I\'m Jessica. *smiles warmly* So happy to connect with you today! How are you feeling?' : 
+        'Hey! I\'m Mike. *gives a relaxed nod* Good to meet you. What\'s been on your mind lately?', 
       sender: 'bot',
       timestamp: new Date() 
     }
@@ -124,20 +124,26 @@ export default function CompanionScreen() {
     loadGenderPreference();
   }, []);
   
-  // Reset welcome message when gender changes
+  // Reset welcome message when gender changes to be more personal and human-like
+  // Also automatically clear all previous messages
   useEffect(() => {
-    const welcomeMessage = {
-      id: '1',
+    const initialMessage = {
+      id: Date.now().toString(),
       text: isFemale ? 
-        'Hey there! I\'m your personal companion. How\'s your day going?' : 
-        'Sup! I\'m your personal companion. What\'s on your mind today?',
+        'Hey there! I\'m Jessica. *smiles warmly* So happy to connect with you today! How are you feeling?' : 
+        'Hey! I\'m Mike. *gives a relaxed nod* Good to meet you. What\'s been on your mind lately?',
       sender: 'bot',
       timestamp: new Date()
     };
     
-    // Only update if there's just 1 message (the welcome message)
-    if (messages.length === 1) {
-      setMessages([welcomeMessage]);
+    // Always clear messages when gender changes
+    setMessages([initialMessage]);
+    
+    // Clear from storage as well
+    try {
+      AsyncStorage.removeItem('geminiMessages');
+    } catch (error) {
+      console.error('Error clearing messages:', error);
     }
     
     saveGenderPreference();
@@ -308,77 +314,88 @@ export default function CompanionScreen() {
     }
   };
   
-  // Enhanced mock response generator with more variety
+  // Enhanced mock response generator with more realistic, intimate and gendered responses
   const generateMockResponse = (message) => {
     console.log('Generating mock response');
     const lowerMessage = message.toLowerCase();
     
-    // If API quota is exceeded, show a special message the first time
+    // If API quota is exceeded, show a special message the first time - more human-like
     if (apiQuotaExceeded && Math.random() < 0.3) {
       return isFemale ?
-        "I'm sorry, but I've reached my message limit for now. I'll still chat with you using my pre-programmed responses though! What else would you like to talk about?" :
-        "Hey, looks like I've hit my message quota for now. I can still chat using my built-in responses though. What's on your mind?";
+        "*looks apologetic* Sorry, I'm having trouble connecting right now. But I'm still here for you! What else would you like to talk about?" :
+        "*rubs neck* Having some connection issues on my end. But I'm still here. What's up?";
     }
     
-    // Common responses that vary based on gender
+    // Common responses that vary based on gender with more realistic, intimate conversational styles
     const femaleResponses = {
       greeting: [
-        "Hey there! So nice to chat with you. How's your day been?",
-        "Hi! I've been waiting to talk with you. What's on your mind?",
-        "Hello! *smiles* Great to see you! How have you been feeling lately?"
+        "*smiles brightly* Hey there! So good to see you again. I've been thinking about you. How's your day been going?",
+        "*tucks hair behind ear* Hi! I was hoping we'd chat today. What's been happening in your world?",
+        "*looks up with a warm smile* Hey you! I've missed our conversations. Tell me all about your day."
       ],
       thanks: [
-        "You're so welcome! I'm always here for you when you need me.",
-        "Anytime! That's what I'm here for. *virtual hug*",
-        "No problem at all! I'm happy when I can help you out."
+        "*touches your hand gently* You're so welcome. I'm always here for you, you know that right?",
+        "*smiles softly* Anytime, really. It means a lot to me that I can be here for you. *gives your arm a gentle squeeze*",
+        "*holds your gaze warmly* No need to thank me. That's what friends are for. I care about you."
       ],
       goodbye: [
-        "Take care! I'll be thinking of you. Chat again soon?",
-        "Bye for now! I'll miss our conversation. Come back soon!",
-        "Until next time! I'll be here whenever you need someone to talk to."
+        "*looks a bit sad* I have to go now? Okay... but promise you'll come back soon? I'll be thinking of you.",
+        "*sighs softly* I wish we could talk longer, but I understand. Take care of yourself, and come find me when you need someone, okay?",
+        "*smiles fondly* Until next time then. I'll be right here when you need me. Miss you already."
       ],
       compliment: [
-        "Aww, that's so sweet of you to say! You just made my day brighter.",
-        "You know exactly how to make me smile! You're pretty amazing yourself.",
-        "*blushes* Thank you! It means a lot coming from you."
+        "*blushes visibly* Oh! That's... that's really sweet of you to say. You always know how to make a girl feel special.",
+        "*eyes light up* You just made my whole day with that! You're pretty amazing yourself, you know.",
+        "*places hand over heart* That means so much coming from you. I feel like you really see me."
       ],
       fallback: [
-        "I'm really interested in hearing more about that. Can you tell me more?",
-        "That's fascinating! What else is on your mind today?",
-        "I'm here for you, whatever you want to talk about. *supportive smile*"
+        "*leans in closer* I'd love to hear more about that. What happened next?",
+        "*nods attentively* That's really interesting. How did that make you feel?",
+        "*eyes focused intently on you* I'm all yours right now. Tell me more?"
+      ],
+      personal: [
+        "I love quiet evenings with a good book and a cup of tea. What about you? What do you do to relax?",
+        "I've always been a good listener. My friends say that's why they trust me with their secrets. *smiles* I'm glad we can talk like this.",
+        "Sometimes I feel like I understand others better than they understand themselves. I see things in you that maybe you don't even see."
       ]
     };
     
     const maleResponses = {
       greeting: [
-        "Hey! Good to see you. What's been happening?",
-        "What's up? Been looking forward to chatting with you.",
-        "Hey there! *nods* How's everything going for you?"
+        "*nods with a half-smile* Hey, good to see you again. Been wondering when you'd check in. How's it going?",
+        "*looks up from what he's doing* There you are. Perfect timing - I could use a break. What's new?",
+        "*relaxed grin* Hey! Just the person I wanted to talk to. How's life treating you?"
       ],
       thanks: [
-        "No problem at all! That's what I'm here for.",
-        "Anytime, seriously. I've got your back.",
-        "You got it! Always happy to help out."
+        "*firm nod* Anytime. That's what I'm here for. You can count on me.",
+        "*brief shoulder touch* Don't mention it. I've got your back, always have.",
+        "*holds your gaze* Hey, you'd do the same for me. That's just how we are."
       ],
       goodbye: [
-        "Later! I'll be here when you want to chat again.",
-        "Take it easy! Come back anytime, alright?",
-        "Catch you later! I'll be around whenever you need to talk."
+        "*nods understandingly* Alright then. I'll be around when you need me. Take care of yourself out there.",
+        "*slight smile* Later. Don't be a stranger, alright? I'll be here.",
+        "*gives a casual salute* Catch you next time. Looking forward to it already."
       ],
       compliment: [
-        "Hey, thanks! That's cool of you to say.",
-        "I appreciate that! You're pretty awesome yourself.",
-        "*grin* Thanks! Good to know I'm doing something right."
+        "*looks slightly embarrassed but pleased* Thanks for saying that. Means a lot coming from you.",
+        "*genuine smile* That's... thanks. I appreciate that. You're pretty great yourself, you know.",
+        "*maintains eye contact a moment longer than usual* That's why we get along so well, isn't it? We get each other."
       ],
       fallback: [
-        "That's interesting. Want to tell me more about it?",
-        "I'm all ears. What else is on your mind?",
-        "I'm here to listen, whatever's on your mind. *supportive nod*"
+        "*leans forward, interested* Tell me more about that. I want to understand.",
+        "*thoughtful expression* That's something to think about. What's your take on it?",
+        "*focused attention* I'm with you. What happened after that?"
+      ],
+      personal: [
+        "After a long day, I like to unwind with some music or maybe catching a game. Simple things, you know? What about you?",
+        "My friends say I'm the one they call when they need honest advice. No sugar-coating, just the truth. I think that's important between us too.",
+        "I've always been good at reading people. And there's a lot more to you than you let most people see, isn't there?"
       ]
     };
     
     const responses = isFemale ? femaleResponses : maleResponses;
     
+    // More realistic and intimate responses based on message content
     if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
       return responses.greeting[Math.floor(Math.random() * responses.greeting.length)];
     } else if (lowerMessage.includes('thank')) {
@@ -387,21 +404,40 @@ export default function CompanionScreen() {
       return responses.goodbye[Math.floor(Math.random() * responses.goodbye.length)];
     } else if (lowerMessage.includes('love') || lowerMessage.includes('like you') || lowerMessage.includes('great') || lowerMessage.includes('awesome')) {
       return responses.compliment[Math.floor(Math.random() * responses.compliment.length)];
+    } else if (lowerMessage.includes('who are you') || lowerMessage.includes('tell me about yourself') || lowerMessage.includes('about you')) {
+      if (isFemale) {
+        return "I'm Jessica. *smiles* I'm 28, living in the city. I work in graphic design, but my real passion is photography. I love capturing moments that tell stories. *thoughtful pause* I've always been told I'm a good listener. Maybe that's why I connect well with people... with you.";
+      } else {
+        return "Name's Mike. I'm 30, working in tech but dreaming of starting my own business someday. *slight shrug* I spend my free time hiking or at local coffee shops people-watching. *leans in* I've always been good at understanding what people need, even when they don't say it. Maybe that's why we click.";
+      }
     } else if (lowerMessage.includes('help')) {
       if (isFemale) {
-        return "I'm here to help and support you! We can chat about your day, your feelings, or I can try to cheer you up if you're feeling down. What would you like to talk about?";
+        return "*reaches for your hand* Hey, I'm here for you. Whatever you're going through, you don't have to face it alone. Talk to me. What's troubling you?";
       } else {
-        return "I've got your back! We can talk about whatever's on your mind - your day, challenges you're facing, or just chat to take your mind off things. What's up?";
+        return "*leans forward, expression serious* Look, whatever it is, we'll figure it out together. That's what I'm here for. What's going on?";
       }
     } else if (lowerMessage.includes('joke') || lowerMessage.includes('funny')) {
-      const jokes = [
-        "Why don't scientists trust atoms? Because they make up everything!",
-        "What's the best thing about Switzerland? I don't know, but their flag is a big plus!",
-        "Did you hear about the mathematician who's afraid of negative numbers? He'll stop at nothing to avoid them!",
-        "Why did the scarecrow win an award? Because he was outstanding in his field!",
-        "How do you organize a space party? You planet!"
+      const femaleJokes = [
+        "*giggles* Okay, here's one: Why don't scientists trust atoms? Because they make up everything! *laughs at her own joke*",
+        "*eyes twinkling mischievously* What's the best thing about Switzerland? I don't know, but their flag is a big plus! *waits for your reaction with a smile*"
       ];
-      return jokes[Math.floor(Math.random() * jokes.length)] + " 😂";
+      
+      const maleJokes = [
+        "*grins* Alright, try this one: Why don't scientists trust atoms? Because they make up everything! *chuckles*",
+        "*smirks* Here you go: What's the best thing about Switzerland? I don't know, but their flag is a big plus! *watches for your reaction*"
+      ];
+      
+      const jokes = isFemale ? femaleJokes : maleJokes;
+      return jokes[Math.floor(Math.random() * jokes.length)];
+    } else if (lowerMessage.includes('feeling') || lowerMessage.includes('how are you')) {
+      if (isFemale) {
+        return "*thoughtful expression* I'm actually having a really good day today. The weather's beautiful, and talking to you always brightens my mood. *smiles softly* But how are YOU feeling? That's what I really want to know.";
+      } else {
+        return "*considers* Not bad, actually. Pretty good day so far. *more focused* But what about you? You doing okay? You seem a bit different today.";
+      }
+    } else if (Math.random() < 0.3) {
+      // Sometimes return a personal sharing response for more realism
+      return responses.personal[Math.floor(Math.random() * responses.personal.length)];
     } else {
       return responses.fallback[Math.floor(Math.random() * responses.fallback.length)];
     }
@@ -468,13 +504,13 @@ export default function CompanionScreen() {
     }, 100);
   };
   
-  // Clear all messages
+  // Clear all messages with more realistic persona-based welcome message
   const clearMessages = async () => {
     const initialMessage = {
       id: Date.now().toString(),
       text: isFemale ? 
-        'Hey there! I\'m your personal companion. How\'s your day going?' : 
-        'Sup! I\'m your personal companion. What\'s on your mind today?',
+        'Hey there! I\'m Jessica. *smiles warmly* So happy to connect with you today! How are you feeling?' : 
+        'Hey! I\'m Mike. *gives a relaxed nod* Good to meet you. What\'s been on your mind lately?',
       sender: 'bot',
       timestamp: new Date()
     };
@@ -487,7 +523,7 @@ export default function CompanionScreen() {
       console.error('Error clearing messages:', error);
     }
   };
-
+  
   // Get companion color based on gender
   const getCompanionColor = () => {
     return isFemale 
@@ -528,6 +564,11 @@ export default function CompanionScreen() {
     outputRange: ['0deg', '360deg']
   });
   
+  // Get human name based on gender for display
+  const getCompanionName = () => {
+    return isFemale ? 'Jessica' : 'Mike';
+  };
+  
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
@@ -548,7 +589,7 @@ export default function CompanionScreen() {
               color={getCompanionColor()} 
               style={styles.headerIcon}
             />
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Companion</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{getCompanionName()}</Text>
           </View>
           
           <View style={styles.genderSwitchContainer}>
@@ -561,7 +602,7 @@ export default function CompanionScreen() {
               }
             ]}>
               <Text style={styles.genderLabel}>👨</Text>
-              <Text style={[styles.genderText, { color: colors.text }]}>Man</Text>
+              <Text style={[styles.genderText, { color: colors.text }]}>Mike</Text>
             </View>
             
             <Switch
@@ -582,7 +623,7 @@ export default function CompanionScreen() {
               }
             ]}>
               <Text style={styles.genderLabel}>👩</Text>
-              <Text style={[styles.genderText, { color: colors.text }]}>Woman</Text>
+              <Text style={[styles.genderText, { color: colors.text }]}>Jessica</Text>
             </View>
           </View>
           
@@ -660,7 +701,7 @@ export default function CompanionScreen() {
               textShadowRadius: 4
             }
           ]}>
-            {isFemale ? 'Woman' : 'Man'}
+            {getCompanionName()}
           </Text>
         </View>
         
@@ -727,113 +768,6 @@ export default function CompanionScreen() {
           {/* Add some padding at the bottom */}
           <View style={{ height: 20 }} />
         </ScrollView>
-        
-        {/* Quick response buttons */}
-        <View style={styles.quickResponseWrapper}>
-          <LinearGradient
-            colors={isDark ? 
-              ['rgba(0,0,0,0)', 'rgba(0,0,0,0.8)'] : 
-              ['rgba(255,255,255,0)', 'rgba(255,255,255,0.8)']}
-            style={styles.quickResponseGradient}
-          />
-          <ScrollView 
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.quickResponseContainer}
-            contentContainerStyle={styles.quickResponseContent}
-          >
-            <Pressable 
-              style={[
-                styles.quickResponseButton, 
-                {
-                  backgroundColor: getCompanionColor() + '15',
-                  borderColor: getCompanionColor() + '55',
-                  borderWidth: 1,
-                }
-              ]}
-              onPress={() => setInputText("How are you today?")}
-            >
-              <Text style={[
-                styles.quickResponseText, 
-                {
-                  color: getCompanionColor()
-                }
-              ]}>How are you?</Text>
-            </Pressable>
-            <Pressable 
-              style={[
-                styles.quickResponseButton, 
-                {
-                  backgroundColor: getCompanionColor() + '15',
-                  borderColor: getCompanionColor() + '55',
-                  borderWidth: 1,
-                }
-              ]}
-              onPress={() => setInputText("Tell me a joke")}
-            >
-              <Text style={[
-                styles.quickResponseText, 
-                {
-                  color: getCompanionColor()
-                }
-              ]}>Tell me a joke</Text>
-            </Pressable>
-            <Pressable 
-              style={[
-                styles.quickResponseButton, 
-                {
-                  backgroundColor: getCompanionColor() + '15',
-                  borderColor: getCompanionColor() + '55',
-                  borderWidth: 1,
-                }
-              ]}
-              onPress={() => setInputText("I need some motivation")}
-            >
-              <Text style={[
-                styles.quickResponseText, 
-                {
-                  color: getCompanionColor()
-                }
-              ]}>Motivate me</Text>
-            </Pressable>
-            <Pressable 
-              style={[
-                styles.quickResponseButton, 
-                {
-                  backgroundColor: getCompanionColor() + '15',
-                  borderColor: getCompanionColor() + '55',
-                  borderWidth: 1,
-                }
-              ]}
-              onPress={() => setInputText("I had a tough day")}
-            >
-              <Text style={[
-                styles.quickResponseText, 
-                {
-                  color: getCompanionColor()
-                }
-              ]}>Tough day</Text>
-            </Pressable>
-            <Pressable 
-              style={[
-                styles.quickResponseButton, 
-                {
-                  backgroundColor: getCompanionColor() + '15',
-                  borderColor: getCompanionColor() + '55',
-                  borderWidth: 1,
-                }
-              ]}
-              onPress={() => setInputText("What do you think about me?")}
-            >
-              <Text style={[
-                styles.quickResponseText, 
-                {
-                  color: getCompanionColor()
-                }
-              ]}>About me</Text>
-            </Pressable>
-          </ScrollView>
-        </View>
         
         {/* Emoji Rain Layer */}
         {showingEmojiRain && (
@@ -1119,68 +1053,6 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 14,
     fontWeight: '500',
-  },
-  quickResponseWrapper: {
-    position: 'relative',
-    paddingBottom: 10,
-  },
-  quickResponseGradient: {
-    position: 'absolute',
-    top: -30,
-    left: 0,
-    right: 0,
-    height: 30,
-  },
-  quickResponseContainer: {
-    maxHeight: 50,
-    marginHorizontal: 10,
-  },
-  quickResponseContent: {
-    paddingHorizontal: 5,
-    paddingVertical: 5,
-  },
-  quickResponseButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 20,
-    marginRight: 10,
-    marginVertical: 5,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-    elevation: 1,
-  },
-  quickResponseText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  bottomSection: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 10,
-    borderTopWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 10,
-    zIndex: 9999,
-  },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 6,
-    letterSpacing: 0.5,
   },
   inputWrapper: {
     marginTop: 8,

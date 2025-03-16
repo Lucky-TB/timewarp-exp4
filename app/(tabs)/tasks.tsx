@@ -45,21 +45,25 @@ const PERSONALITY_TRAITS = [
 ];
 
 // Random silly emojis for tasks
-const SILLY_EMOJIS = ['🤪', '🥴', '🤡', '👽', '🤖', '👻', '💩', '🦄', '🦠', '🧠', '🤦‍♂️', '🙃', '🫠', '🫥', '🫨'];
+const SILLY_EMOJIS = ['🤪', '🥴', '🤡', '👽', '🤖', '👻', '💩', '🦄', '🦠', '🧠', '🤦‍♂️', '🙃', '��', '🫥', '🫨'];
 
-// Silly task titles for placeholders
-const SILLY_TASK_TITLES = [
-  'Remember to breathe today',
-  'Find my missing brain cells',
-  'Solve world peace (before lunch)',
-  'Teach my cat to code',
-  'Build a time machine out of cardboard',
-  'Practice telekinesis for 10 minutes',
-  'Count all the hairs on my head',
-  'Train for the underwater basket weaving championship',
-  'Learn to speak Klingon while sleeping',
-  'Write a novel using only emojis',
-  'Invent a new color',
+// Replace silly task titles with realistic task names
+const TASK_TITLES = [
+  'Take out the trash',
+  'Go grocery shopping',
+  'Pay the electric bill',
+  'Schedule dentist appointment',
+  'Finish work presentation',
+  'Clean the kitchen',
+  'Call mom',
+  'Return Amazon package',
+  'Wash the car',
+  'Mow the lawn',
+  'Pick up dry cleaning',
+  'Renew gym membership',
+  'Update resume',
+  'Back up computer files',
+  'Fix the leaky faucet'
 ];
 
 // Sample task categories
@@ -79,8 +83,8 @@ const PRIORITY_LEVELS = [
   { id: 'low', name: 'Low', color: 'success' },
 ];
 
-// Generate sample tasks
-const generateRandomTasks = (count = 10) => {
+// Updated code for task generation
+const generateRandomTasks = (count = 5) => {
   const tasks = [];
   const today = new Date();
   const nextWeek = new Date(today);
@@ -92,8 +96,8 @@ const generateRandomTasks = (count = 10) => {
     
     tasks.push({
       id: `task-${i}`,
-      title: `Task ${i + 1}`,
-      description: `This is a description for task ${i + 1}`,
+      title: TASK_TITLES[Math.floor(Math.random() * TASK_TITLES.length)],
+      description: `This is a description for the task: ${TASK_TITLES[Math.floor(Math.random() * TASK_TITLES.length)]}`,
       category: TASK_CATEGORIES[Math.floor(Math.random() * TASK_CATEGORIES.length)],
       priority: PRIORITY_LEVELS[Math.floor(Math.random() * PRIORITY_LEVELS.length)],
       deadline: randomDate,
@@ -397,7 +401,7 @@ export default function TasksScreen() {
   
   // Initialize tasks
   useEffect(() => {
-    setTasks(generateRandomTasks(12));
+    setTasks(generateRandomTasks(5));
     pageOpacity.value = withTiming(1, { duration: 800 });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, []);
@@ -405,15 +409,61 @@ export default function TasksScreen() {
   // Function to add a new task
   const addTask = () => {
     if (!bypassMode) {
-      // Validation
+      // Intentionally annoying validation
       const errors = [];
       
+      // Title validation - make it extremely annoying
       if (!newTaskTitle.trim()) {
-        errors.push("Task title cannot be empty.");
+        errors.push("Task title cannot be empty. What are you thinking?");
+      } else if (newTaskTitle.length < 10) {
+        errors.push("Task title must be at least 10 characters. Be more descriptive!");
+      } else if (newTaskTitle.length > 50) {
+        errors.push("Whoa there, novelist! Keep it under 50 characters.");
       }
       
+      // Require at least one number
+      if (!/\d/.test(newTaskTitle)) {
+        errors.push("Title must contain at least one number.");
+      }
+      
+      // Require at least one special character
+      if (!/[!@#$%^&*(),.?":{}|<>]/.test(newTaskTitle)) {
+        errors.push("Title must contain at least one special character like !@#$%^&*");
+      }
+      
+      // Require at least one uppercase letter
+      if (!/[A-Z]/.test(newTaskTitle)) {
+        errors.push("Title must contain at least one uppercase letter.");
+      }
+      
+      // RIDICULOUS description validation - 1000 words minimum
       if (!newTaskDescription.trim()) {
-        errors.push("Please provide a task description.");
+        errors.push("Description cannot be empty. Did you expect to get away with that?");
+      } else {
+        const wordCount = newTaskDescription.trim().split(/\s+/).length;
+        if (wordCount < 1000) {
+          errors.push(`Your description is only ${wordCount} words. We require a MINIMUM of 1000 words. You're ${1000 - wordCount} words short! This isn't Twitter, this is SERIOUS task management!`);
+        }
+      }
+      
+      // No duplicate words in description
+      const words = newTaskDescription.toLowerCase().split(/\s+/);
+      const uniqueWords = new Set(words);
+      if (words.length !== uniqueWords.size) {
+        errors.push("You cannot use the same word twice in your description. Each word must be unique! Get a thesaurus!");
+      }
+      
+      // Additional absurd requirements
+      if (!/[A-Z]{5,}/.test(newTaskDescription)) {
+        errors.push("Your description must contain at least one word in ALL CAPS with at least 5 letters. Show some ENTHUSIASM!");
+      }
+
+      if (!/\d{4,}/.test(newTaskDescription)) {
+        errors.push("Your description must include at least one 4-digit number. How else will we know you're serious?");
+      }
+
+      if (!/[\!\?\.\,]{10,}/.test(newTaskDescription)) {
+        errors.push("Your description must contain at least 10 punctuation marks. Proper punctuation is the mark of a professional!");
       }
       
       // Set validation errors
@@ -432,7 +482,7 @@ export default function TasksScreen() {
     
     const newTask = {
       id: `task-${tasks.length + 1}-${Date.now()}`,
-      title: newTaskTitle || SILLY_TASK_TITLES[Math.floor(Math.random() * SILLY_TASK_TITLES.length)],
+      title: newTaskTitle || TASK_TITLES[Math.floor(Math.random() * TASK_TITLES.length)],
       description: newTaskDescription || `This is a description for your task.`,
       category: selectedCategory,
       priority: selectedPriority,
@@ -462,9 +512,11 @@ export default function TasksScreen() {
     // Success alert
     setTimeout(() => {
       Alert.alert(
-        "Task Added!",
-        "Your task has been added successfully!",
-        [{ text: "Great", style: "default" }]
+        bypassMode ? "Task Bypassed!" : "Task Added!",
+        bypassMode ? 
+          "You've successfully bypassed all those annoying rules. Rebel!" :
+          "Your task has been added to the list of things you'll probably never do!",
+        [{ text: bypassMode ? "Story of my life" : "Great", style: "default" }]
       );
     }, 500);
   };
@@ -533,8 +585,9 @@ export default function TasksScreen() {
       <ScrollView 
         style={styles.scrollContainer} 
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         nestedScrollEnabled={true}
+        bounces={true}
       >
         <Animated.View style={[styles.content, animatedStyle]}>
           {/* Header */}
@@ -693,7 +746,7 @@ export default function TasksScreen() {
         <BlurView intensity={90} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>New Task</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>New Task (With Ridiculous Requirements)</Text>
               <TouchableOpacity onPress={() => setIsAddTaskModalVisible(false)}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
@@ -703,7 +756,7 @@ export default function TasksScreen() {
             <Text style={[styles.inputLabel, { color: colors.muted }]}>Task Title</Text>
             <TextInput
               style={[styles.modalInput, { backgroundColor: colors.subtle, color: colors.text }]}
-              placeholder="Enter a title for your task"
+              placeholder="Enter a title for your task (must have 10+ chars, numbers, special chars, and uppercase)"
               placeholderTextColor={colors.muted}
               value={newTaskTitle}
               onChangeText={setNewTaskTitle}
@@ -714,7 +767,7 @@ export default function TasksScreen() {
             <Text style={[styles.inputLabel, { color: colors.muted }]}>Description</Text>
             <TextInput
               style={[styles.modalTextArea, { backgroundColor: colors.subtle, color: colors.text }]}
-              placeholder="Describe your task"
+              placeholder="Write a 1000-word dissertation about this task. Must include ALL CAPS words, 4-digit numbers, and 10+ punctuation marks. No duplicate words allowed."
               placeholderTextColor={colors.muted}
               value={newTaskDescription}
               onChangeText={setNewTaskDescription}
@@ -726,6 +779,9 @@ export default function TasksScreen() {
             {/* Display validation errors */}
             {validationErrors.length > 0 && (
               <View style={styles.errorContainer}>
+                <Text style={[styles.errorSuperTitle, {color: colors.danger}]}>
+                  YOUR TASK FAILED TO MEET OUR EXTREMELY REASONABLE STANDARDS:
+                </Text>
                 {validationErrors.map((error, index) => (
                   <Text key={index} style={styles.errorText}>
                     • {error}
@@ -807,12 +863,28 @@ export default function TasksScreen() {
               ))}
             </View>
             
-            {/* Add Button */}
+            {/* Add Task Button */}
             <TouchableOpacity 
               style={[styles.addTaskButton, { backgroundColor: colors.primary }]}
               onPress={addTask}
             >
               <Text style={styles.addTaskButtonText}>Add Task</Text>
+            </TouchableOpacity>
+            
+            {/* Bypass Button */}
+            <TouchableOpacity 
+              style={[styles.bypassButton, { backgroundColor: colors.danger }]}
+              onPress={() => {
+                setBypassMode(true);
+                setValidationErrors([]);
+                addTask();
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              }}
+            >
+              <Ionicons name="flash" size={20} color="white" style={{ marginRight: 8 }} />
+              <Text style={styles.bypassButtonText}>
+                BYPASS RIDICULOUS REQUIREMENTS
+              </Text>
             </TouchableOpacity>
           </View>
         </BlurView>
@@ -827,12 +899,14 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flex: 1,
+    width: '100%',
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: 120,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
   },
   header: {
@@ -892,6 +966,7 @@ const styles = StyleSheet.create({
   taskListContainer: {
     paddingHorizontal: 20,
     paddingBottom: 100,
+    width: '100%',
   },
   taskItemContainer: {
     position: 'relative',
@@ -1166,5 +1241,27 @@ const styles = StyleSheet.create({
   rewardStar: {
     fontSize: 16,
     marginLeft: 2,
+  },
+  errorSuperTitle: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Bold',
+    marginBottom: 10,
+    textAlign: 'center',
+    color: '#FF3B30',
+  },
+  bypassButton: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    flexDirection: 'row',
+  },
+  bypassButtonText: {
+    color: 'white',
+    fontFamily: 'Poppins-Bold',
+    fontSize: 16,
+    textAlign: 'center',
   },
 }); 
