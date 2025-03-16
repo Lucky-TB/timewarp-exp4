@@ -106,10 +106,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="analytics"
+        name="companion"
         options={{
-          title: 'Analytics',
-          tabBarIcon: ({ color, focused }) => <MaterialTabBarIcon name="chart-timeline-variant" color={color} focused={focused} />,
+          title: 'Companion',
+          tabBarIcon: ({ color, focused }) => <MaterialTabBarIcon name="account-heart" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen

@@ -26,7 +26,7 @@ import Animated, {
   interpolate,
   Easing
 } from 'react-native-reanimated';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 
@@ -35,6 +35,7 @@ export default function DashboardScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const [userName, setUserName] = useState('Time Traveler');
   const [focusTime, setFocusTime] = useState('2:45');
+  const router = useRouter();
 
   // Animated values
   const welcomeOpacity = useSharedValue(0);
@@ -90,6 +91,8 @@ export default function DashboardScreen() {
 
   const handleFocusPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Navigate to the focus tab
+    router.push('/focus');
   };
 
   return (

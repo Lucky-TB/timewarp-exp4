@@ -9,6 +9,8 @@ import {
   Platform,
   Dimensions,
   FlatList,
+  Modal,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { BlurView } from 'expo-blur';
@@ -34,10 +36,30 @@ import { format } from 'date-fns';
 
 const { width, height } = Dimensions.get('window');
 
-// Random task personality traits
+// Random task personality traits (updated with more ridiculous ones)
 const PERSONALITY_TRAITS = [
   'Anxious', 'Cheerful', 'Perfectionist', 'Laid-back', 'Sarcastic',
   'Dramatic', 'Zen', 'Grumpy', 'Motivational', 'Philosophical',
+  'Conspiracy Theorist', 'Drama Queen', 'Extremely Confused', 'Forgetful',
+  'Space Cadet', 'Sugar High', 'Completely Lost', 'Paranoid', 'Clueless',
+];
+
+// Random silly emojis for tasks
+const SILLY_EMOJIS = ['🤪', '🥴', '🤡', '👽', '🤖', '👻', '💩', '🦄', '🦠', '🧠', '🤦‍♂️', '🙃', '🫠', '🫥', '🫨'];
+
+// Silly task titles for placeholders
+const SILLY_TASK_TITLES = [
+  'Remember to breathe today',
+  'Find my missing brain cells',
+  'Solve world peace (before lunch)',
+  'Teach my cat to code',
+  'Build a time machine out of cardboard',
+  'Practice telekinesis for 10 minutes',
+  'Count all the hairs on my head',
+  'Train for the underwater basket weaving championship',
+  'Learn to speak Klingon while sleeping',
+  'Write a novel using only emojis',
+  'Invent a new color',
 ];
 
 // Sample task categories
@@ -101,7 +123,7 @@ const generateRandomTasks = (count = 10) => {
   return tasks;
 };
 
-// Task item component
+// Modified task item component to add silly elements
 const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
   // Animation values
   const offset = useSharedValue(0);
@@ -194,22 +216,38 @@ const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
   // Format deadline
   const formattedDeadline = format(task.deadline, 'MMM d, h:mm a');
   
-  // Get personality icon
+  // Add random emojis to task titles on render
+  const taskEmoji = useRef(SILLY_EMOJIS[Math.floor(Math.random() * SILLY_EMOJIS.length)]).current;
+  
+  // Get personality icon with more silly icons
   const getPersonalityIcon = (personality) => {
     switch (personality) {
       case 'Anxious': return 'pulse';
       case 'Cheerful': return 'happy';
       case 'Perfectionist': return 'checkmark-circle';
       case 'Laid-back': return 'sunny';
-      case 'Sarcastic': return 'eye-roll';
+      case 'Sarcastic': return 'thumbs-down';
       case 'Dramatic': return 'thunderstorm';
       case 'Zen': return 'flower';
       case 'Grumpy': return 'cloud';
       case 'Motivational': return 'trophy';
       case 'Philosophical': return 'book';
+      case 'Conspiracy Theorist': return 'planet';
+      case 'Drama Queen': return 'flame';
+      case 'Extremely Confused': return 'help';
+      case 'Forgetful': return 'help-buoy';
+      case 'Space Cadet': return 'rocket';
+      case 'Sugar High': return 'ice-cream';
+      case 'Completely Lost': return 'compass';
+      case 'Paranoid': return 'eye';
+      case 'Clueless': return 'help-circle';
       default: return 'help-circle';
     }
   };
+  
+  // Random rotation for tasks to make them look stupid
+  const randomRotation = useRef(Math.random() * 6 - 3).current;
+  const randomScale = useRef(0.95 + Math.random() * 0.1).current;
   
   // Is deadline close?
   const isDeadlineClose = task.hoursToDeadline < 24 && !task.completed;
@@ -219,7 +257,7 @@ const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
       {/* Delete background */}
       <View style={[styles.deleteBackground, { backgroundColor: colors.danger }]}>
         <Ionicons name="trash" size={24} color="white" />
-        <Text style={styles.deleteText}>Delete</Text>
+        <Text style={styles.deleteText}>Delete Forever!</Text>
       </View>
       
       <PanGestureHandler onGestureEvent={gestureHandler}>
@@ -227,7 +265,13 @@ const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
           style={[
             styles.taskItem,
             animatedStyle,
-            { backgroundColor: colors.card }
+            { 
+              backgroundColor: colors.card,
+              transform: [
+                { rotate: `${randomRotation}deg` },
+                { scale: randomScale }
+              ]
+            }
           ]}
         >
           <TouchableOpacity
@@ -247,7 +291,7 @@ const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
                 style={[styles.taskTitle, titleStyle, { color: colors.text }]}
                 numberOfLines={1}
               >
-                {task.title}
+                {taskEmoji} {task.title}
               </Animated.Text>
               
               <TouchableOpacity onPress={toggleExpand}>
@@ -308,49 +352,41 @@ const TaskItem = ({ task, onToggle, onDelete, onExpand, colors }) => {
               </View>
             </View>
             
-            <Animated.View style={[styles.taskDescription, descriptionStyle]}>
-              <Text
-                style={[styles.descriptionText, { color: colors.text }]}
-                numberOfLines={2}
-              >
-                {task.description}
-              </Text>
-              
-              {task.relationships.length > 0 && (
-                <View style={styles.relationshipsContainer}>
-                  <Text style={[styles.relationshipsLabel, { color: colors.muted }]}>
-                    Related tasks:
+            {task.isExpanded && (
+              <Animated.View style={[styles.taskDescription, descriptionStyle]}>
+                <Text style={[styles.descriptionText, { color: colors.text }]}>
+                  {task.description}
+                </Text>
+                
+                {/* Add random statistics */}
+                <View style={styles.stupidStats}>
+                  <Text style={[styles.stupidStatText, { color: colors.muted }]}>
+                    Brain cells required: {Math.floor(Math.random() * 100)}
                   </Text>
-                  {task.relationships.map((rel, index) => (
-                    <View key={index} style={styles.relationshipItem}>
-                      <Ionicons
-                        name={rel.type === 'friend' ? 'heart' : 'flash'}
-                        size={12}
-                        color={rel.type === 'friend' ? colors.success : colors.warning}
-                      />
-                      <Text
-                        style={[
-                          styles.relationshipText,
-                          {
-                            color: rel.type === 'friend'
-                              ? colors.success
-                              : colors.warning
-                          }
-                        ]}
-                      >
-                        {rel.taskId.replace('task-', 'Task ')}
-                      </Text>
-                    </View>
-                  ))}
+                  <Text style={[styles.stupidStatText, { color: colors.muted }]}>
+                    Procrastination potential: {Math.floor(Math.random() * 100)}%
+                  </Text>
+                  <Text style={[styles.stupidStatText, { color: colors.muted }]}>
+                    Chance of success: {Math.floor(Math.random() * 100)}%
+                  </Text>
                 </View>
-              )}
-            </Animated.View>
+              </Animated.View>
+            )}
           </View>
           
           <View style={styles.taskActions}>
             {isDeadlineClose && !task.completed && (
               <View style={[styles.urgentBadge, { backgroundColor: colors.danger }]}>
                 <Text style={styles.urgentText}>!</Text>
+              </View>
+            )}
+            
+            {/* Add random reward stars */}
+            {task.completed && (
+              <View style={styles.rewardContainer}>
+                {[...Array(Math.floor(Math.random() * 3) + 1)].map((_, i) => (
+                  <Text key={i} style={styles.rewardStar}>⭐</Text>
+                ))}
               </View>
             )}
           </View>
@@ -368,12 +404,69 @@ export default function TasksScreen() {
   const [searchText, setSearchText] = useState('');
   const pageOpacity = useSharedValue(0);
   
+  // Add task modal state
+  const [isAddTaskModalVisible, setIsAddTaskModalVisible] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDescription, setNewTaskDescription] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState(TASK_CATEGORIES[0]);
+  const [selectedPriority, setSelectedPriority] = useState(PRIORITY_LEVELS[2]); // Medium priority default
+  
   // Initialize tasks
   useEffect(() => {
     setTasks(generateRandomTasks(12));
     pageOpacity.value = withTiming(1, { duration: 800 });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, []);
+  
+  // Function to add a new task with sillier validation
+  const addTask = () => {
+    if (!newTaskTitle.trim()) {
+      // Use silly placeholder title instead of showing error
+      setNewTaskTitle(SILLY_TASK_TITLES[Math.floor(Math.random() * SILLY_TASK_TITLES.length)]);
+    }
+    
+    const today = new Date();
+    const nextWeek = new Date(today);
+    nextWeek.setDate(today.getDate() + 7);
+    const randomDate = new Date(today.getTime() + Math.random() * (nextWeek.getTime() - today.getTime()));
+    const hoursToDeadline = Math.floor((randomDate - today) / (1000 * 60 * 60));
+    
+    const newTask = {
+      id: `task-${tasks.length + 1}-${Date.now()}`,
+      title: newTaskTitle || SILLY_TASK_TITLES[Math.floor(Math.random() * SILLY_TASK_TITLES.length)],
+      description: newTaskDescription || `This is definitely the most important task you've ever had. No pressure.`,
+      category: selectedCategory,
+      priority: selectedPriority,
+      deadline: randomDate,
+      hoursToDeadline,
+      completed: false,
+      personality: PERSONALITY_TRAITS[Math.floor(Math.random() * PERSONALITY_TRAITS.length)],
+      relationships: [],
+      ageState: Math.random(),
+      isExpanded: false,
+    };
+    
+    setTasks(prevTasks => [newTask, ...prevTasks]);
+    
+    // Reset form and close modal with silly feedback
+    setNewTaskTitle('');
+    setNewTaskDescription('');
+    setSelectedCategory(TASK_CATEGORIES[0]);
+    setSelectedPriority(PRIORITY_LEVELS[2]);
+    setIsAddTaskModalVisible(false);
+    
+    // Haptic feedback
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    
+    // Add funny alert
+    setTimeout(() => {
+      Alert.alert(
+        "Task Added!",
+        "Your task has been added to the list of things you'll probably never do!",
+        [{ text: "Story of my life", style: "default" }]
+      );
+    }, 500);
+  };
   
   // Handle task completion toggle
   const toggleTaskCompletion = (taskId) => {
@@ -439,10 +532,13 @@ export default function TasksScreen() {
       <Animated.View style={[styles.content, animatedStyle]}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Tasks</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Tasks That You Might Do</Text>
           <TouchableOpacity
             style={[styles.addButton, { backgroundColor: colors.primary }]}
-            onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+            onPress={() => {
+              setIsAddTaskModalVisible(true);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }}
           >
             <Ionicons name="add" size={24} color="white" />
           </TouchableOpacity>
@@ -572,27 +668,154 @@ export default function TasksScreen() {
           ListEmptyComponent={() => (
             <View style={styles.emptyContainer}>
               <Ionicons
-                name="checkbox"
+                name="cafe"
                 size={60}
                 color={colors.muted}
                 style={styles.emptyIcon}
               />
               <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                No tasks found
+                Nothing To Do!
               </Text>
               <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
                 {searchText
                   ? "Try a different search term"
                   : filter === 'completed'
-                  ? "Complete some tasks to see them here"
+                  ? "Wow, you actually finished something?"
                   : filter === 'urgent'
-                  ? "No urgent tasks right now"
-                  : "Add a new task to get started"}
+                  ? "Nothing urgent. Go back to sleep!"
+                  : "Add a task or continue procrastinating"}
               </Text>
             </View>
           )}
         />
       </Animated.View>
+      
+      {/* Add Task Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isAddTaskModalVisible}
+        onRequestClose={() => setIsAddTaskModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Add New Task You'll Never Do</Text>
+            
+            {/* Task Title Input */}
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: colors.subtle, color: colors.text }]}
+              placeholder="Task title (or leave empty for a surprise)"
+              placeholderTextColor={colors.muted}
+              value={newTaskTitle}
+              onChangeText={setNewTaskTitle}
+              maxLength={50}
+            />
+            
+            {/* Task Description Input */}
+            <TextInput
+              style={[styles.modalTextArea, { backgroundColor: colors.subtle, color: colors.text }]}
+              placeholder="Describe your future failure (optional)"
+              placeholderTextColor={colors.muted}
+              value={newTaskDescription}
+              onChangeText={setNewTaskDescription}
+              multiline
+              textAlignVertical="top"
+              numberOfLines={3}
+            />
+            
+            {/* Category Selection */}
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Category (as if it matters)</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.categoriesContainer}
+            >
+              {TASK_CATEGORIES.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[
+                    styles.categoryPill,
+                    { 
+                      backgroundColor: selectedCategory.id === category.id 
+                        ? colors[category.color] 
+                        : colors.subtle,
+                      transform: [{ rotate: `${Math.random() * 2 - 1}deg` }]
+                    }
+                  ]}
+                  onPress={() => setSelectedCategory(category)}
+                >
+                  <Ionicons 
+                    name={category.icon} 
+                    size={16} 
+                    color={selectedCategory.id === category.id ? 'white' : colors.text} 
+                  />
+                  <Text 
+                    style={[
+                      styles.categoryPillText, 
+                      { 
+                        color: selectedCategory.id === category.id 
+                          ? 'white' 
+                          : colors.text 
+                      }
+                    ]}
+                  >
+                    {category.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            
+            {/* Priority Selection */}
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>Priority (everything is "urgent")</Text>
+            <View style={styles.priorityContainer}>
+              {PRIORITY_LEVELS.map((priority) => (
+                <TouchableOpacity
+                  key={priority.id}
+                  style={[
+                    styles.priorityPill,
+                    { 
+                      backgroundColor: selectedPriority.id === priority.id 
+                        ? colors[priority.color] 
+                        : colors.subtle,
+                      transform: [{ rotate: `${Math.random() * 2 - 1}deg` }]
+                    }
+                  ]}
+                  onPress={() => setSelectedPriority(priority)}
+                >
+                  <Text 
+                    style={[
+                      styles.priorityPillText, 
+                      { 
+                        color: selectedPriority.id === priority.id 
+                          ? 'white' 
+                          : colors.text 
+                      }
+                    ]}
+                  >
+                    {priority.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            {/* Buttons */}
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton, { backgroundColor: colors.subtle }]}
+                onPress={() => setIsAddTaskModalVisible(false)}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.text }]}>Nah, Too Much Work</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.confirmButton, { backgroundColor: colors.primary }]}
+                onPress={addTask}
+              >
+                <Text style={[styles.modalButtonText, { color: 'white' }]}>Pretend I'll Do This</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -815,5 +1038,134 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Poppins-Regular',
     textAlign: 'center',
+  },
+  
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: width * 0.85,
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: 'Poppins-Bold',
+    marginBottom: 20,
+  },
+  modalInput: {
+    width: '100%',
+    height: 50,
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    marginBottom: 15,
+  },
+  modalTextArea: {
+    width: '100%',
+    height: 100,
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    marginBottom: 15,
+  },
+  sectionLabel: {
+    alignSelf: 'flex-start',
+    fontSize: 14,
+    fontFamily: 'Poppins-Medium',
+    marginBottom: 10,
+  },
+  categoriesContainer: {
+    flexDirection: 'row',
+    marginBottom: 15,
+    alignSelf: 'flex-start',
+  },
+  categoryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  categoryPillText: {
+    fontFamily: 'Poppins-Medium',
+    fontSize: 14,
+    marginLeft: 5,
+  },
+  priorityContainer: {
+    flexDirection: 'row',
+    marginBottom: 25,
+    alignSelf: 'flex-start',
+  },
+  priorityPill: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  priorityPillText: {
+    fontFamily: 'Poppins-Medium',
+    fontSize: 14,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 10,
+    marginHorizontal: 5,
+  },
+  cancelButton: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  confirmButton: {
+    backgroundColor: '#7047EB',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-SemiBold',
+  },
+  
+  // New styles for stupid elements
+  stupidStats: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  stupidStatText: {
+    fontSize: 12,
+    fontFamily: 'Poppins-Italic',
+    marginBottom: 3,
+  },
+  rewardContainer: {
+    flexDirection: 'row',
+    marginLeft: 5,
+  },
+  rewardStar: {
+    fontSize: 16,
+    marginLeft: 2,
   },
 }); 
